@@ -4028,7 +4028,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "26cea74c-b597-4448-9e38-3f112d9c6bb5",
+    "buildId": "946fad23-99c3-431b-80e6-e99d6af1d16e",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -4037,6 +4037,11 @@ const _inlineRuntimeConfig = {
     "routeRules": {
       "/__nuxt_error": {
         "cache": false
+      },
+      "/**": {
+        "headers": {
+          "Cache-Control": "public, max-age=0, must-revalidate"
+        }
       },
       "/_nuxt/builds/meta/**": {
         "headers": {
@@ -4476,7 +4481,7 @@ const NUXT_PRERENDER_NO_SSR_ROUTES = ["/index.html","/200.html","/404.html"];
 const NUXT_NO_SCRIPTS_PATTERNS = [];
 const NUXT_PAGE_PATTERNS = [];
 const NUXT_SSR_STREAMING = false;
-const appHead = {"meta":[{"name":"viewport","content":"width=device-width, initial-scale=1"},{"charset":"utf-8"}],"link":[{"rel":"icon","type":"image/svg+xml","href":"/logo.svg"},{"rel":"preconnect","href":"https://fonts.googleapis.com"},{"rel":"preconnect","href":"https://fonts.gstatic.com","crossorigin":""},{"rel":"stylesheet","href":"https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap"}],"style":[],"script":[],"noscript":[],"title":"Delcom Todo","htmlAttrs":{"lang":"id"},"bodyAttrs":{"class":"bg-slate-50 text-slate-900 font-sans antialiased min-h-screen"}};
+const appHead = {"meta":[{"charset":"utf-8"},{"name":"viewport","content":"width=device-width, initial-scale=1"},{"name":"description","content":"Delcom Todo - Aplikasi pencatatan dan pengelolaan arus kas keuangan terintegrasi."},{"name":"theme-color","content":"#0ea5e9"}],"link":[{"rel":"icon","type":"image/svg+xml","href":"/logo.svg"},{"rel":"preconnect","href":"https://fonts.googleapis.com"},{"rel":"preconnect","href":"https://fonts.gstatic.com","crossorigin":""},{"rel":"preload","as":"style","href":"https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap"},{"rel":"stylesheet","href":"https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap","media":"print","onload":"this.media='all'"}],"style":[],"script":[],"noscript":[],"title":"Delcom Todo - Manajemen Arus Kas","htmlAttrs":{"lang":"id"},"bodyAttrs":{"class":"bg-slate-50 text-slate-900 font-sans antialiased min-h-screen"}};
 const appRootTag = "div";
 const appRootAttrs = {"id":"__nuxt"};
 const appTeleportTag = "div";
@@ -4654,33 +4659,215 @@ const plugins = [
 ];
 
 const assets = {
+  "/logo.svg": {
+    "type": "image/svg+xml",
+    "etag": "\"210-GlEB8nwX4NyKhKno+kmUyK+RBV0\"",
+    "mtime": "2026-10-13T16:46:25.324Z",
+    "size": 528,
+    "path": "../public/logo.svg"
+  },
+  "/robots.txt": {
+    "type": "text/plain; charset=utf-8",
+    "etag": "\"17-ZZkCVrbr4BSdjt/K43J0tq8+Qq4\"",
+    "mtime": "2026-10-13T16:46:08.144Z",
+    "size": 23,
+    "path": "../public/robots.txt"
+  },
+  "/_nuxt/BDa7eg1z.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"a86-aBo/8EEn5dhT2N1SfgrHWMnNTqk\"",
+    "mtime": "2026-10-13T17:38:12.062Z",
+    "size": 2694,
+    "path": "../public/_nuxt/BDa7eg1z.js"
+  },
+  "/_nuxt/2FXSs7G2.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"11d1-a8y3OGR9HcWbUKVntRbngprq4k4\"",
+    "mtime": "2026-10-13T17:38:12.062Z",
+    "size": 4561,
+    "path": "../public/_nuxt/2FXSs7G2.js"
+  },
+  "/_nuxt/BdR17gUY.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"eec-7VFbqQd9qrvNONSMF/FddBp+FVA\"",
+    "mtime": "2026-10-13T17:38:12.064Z",
+    "size": 3820,
+    "path": "../public/_nuxt/BdR17gUY.js"
+  },
+  "/_nuxt/3gXAmv-k.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"13314-KQzc1uMtSzk9sCeILD0DbbUzy7A\"",
+    "mtime": "2026-10-13T17:38:12.062Z",
+    "size": 78612,
+    "path": "../public/_nuxt/3gXAmv-k.js"
+  },
+  "/_nuxt/CbXtAM7H.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"24d-+aXgvbJ1Wwcp2A8AXKIBByksYC8\"",
+    "mtime": "2026-10-13T17:38:12.066Z",
+    "size": 589,
+    "path": "../public/_nuxt/CbXtAM7H.js"
+  },
+  "/_nuxt/Bz1pbOfy.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"130aa-JgH9eQerQJkitxAxOj6Q65xjbeQ\"",
+    "mtime": "2026-10-13T17:38:12.065Z",
+    "size": 77994,
+    "path": "../public/_nuxt/Bz1pbOfy.js"
+  },
+  "/_nuxt/ChangeModal.Bvt3C2-f.css": {
+    "type": "text/css; charset=utf-8",
+    "etag": "\"c95-tpDVCXJ9LNK/hgVnWSkSg6xbJqk\"",
+    "mtime": "2026-10-13T17:38:12.072Z",
+    "size": 3221,
+    "path": "../public/_nuxt/ChangeModal.Bvt3C2-f.css"
+  },
+  "/_nuxt/CjxM5s_V.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"4cc-301KjX9czQ1RnbmelQWvUNvr5DI\"",
+    "mtime": "2026-10-13T17:38:12.067Z",
+    "size": 1228,
+    "path": "../public/_nuxt/CjxM5s_V.js"
+  },
+  "/_nuxt/CfhRGobp.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"fde-7K0QHn7D7nkalBptjxVpUqhZ63k\"",
+    "mtime": "2026-10-13T17:38:12.066Z",
+    "size": 4062,
+    "path": "../public/_nuxt/CfhRGobp.js"
+  },
+  "/_nuxt/CrwJZWbT.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"b1e-y0yxkEDMcsunFXOW3yP25llwD0c\"",
+    "mtime": "2026-10-13T17:38:12.067Z",
+    "size": 2846,
+    "path": "../public/_nuxt/CrwJZWbT.js"
+  },
+  "/_nuxt/DetailPage.B10EavG1.css": {
+    "type": "text/css; charset=utf-8",
+    "etag": "\"b9d-9rAwc8pMSqb4HM62nOLm1OTtNWs\"",
+    "mtime": "2026-10-13T17:38:12.073Z",
+    "size": 2973,
+    "path": "../public/_nuxt/DetailPage.B10EavG1.css"
+  },
+  "/_nuxt/BT8bMNGU.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"1c355-8d4gSMKMNSuxpug/k20p/I7OYLI\"",
+    "mtime": "2026-10-13T17:38:12.061Z",
+    "size": 115541,
+    "path": "../public/_nuxt/BT8bMNGU.js"
+  },
+  "/_nuxt/entry.ld4BNW38.css": {
+    "type": "text/css; charset=utf-8",
+    "etag": "\"3748-WUBCYZBvdiDv7joEk42C0vgmPcQ\"",
+    "mtime": "2026-10-13T17:38:12.090Z",
+    "size": 14152,
+    "path": "../public/_nuxt/entry.ld4BNW38.css"
+  },
+  "/_nuxt/D2d93WFP.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"8ea-H/ul1mJ3+QpCYrIIYmHv7LOr8rw\"",
+    "mtime": "2026-10-13T17:38:12.067Z",
+    "size": 2282,
+    "path": "../public/_nuxt/D2d93WFP.js"
+  },
+  "/_nuxt/error-404.DpKY_dMl.css": {
+    "type": "text/css; charset=utf-8",
+    "etag": "\"a8d-ikaaK5LbtZuaZygnIu5mAjYDRiQ\"",
+    "mtime": "2026-10-13T17:38:12.091Z",
+    "size": 2701,
+    "path": "../public/_nuxt/error-404.DpKY_dMl.css"
+  },
+  "/_nuxt/error-500.CmR4p1fc.css": {
+    "type": "text/css; charset=utf-8",
+    "etag": "\"79f-oUFNPOuVEcj5aJV0yQGGzo21VAE\"",
+    "mtime": "2026-10-13T17:38:12.093Z",
+    "size": 1951,
+    "path": "../public/_nuxt/error-500.CmR4p1fc.css"
+  },
+  "/_nuxt/HomePage.DnesErTQ.css": {
+    "type": "text/css; charset=utf-8",
+    "etag": "\"209b-VtSE+1ByL7LNmM6Up7tp6qlDFUY\"",
+    "mtime": "2026-10-13T17:38:12.075Z",
+    "size": 8347,
+    "path": "../public/_nuxt/HomePage.DnesErTQ.css"
+  },
+  "/_nuxt/NotFoundPage.Di8Nqrq9.css": {
+    "type": "text/css; charset=utf-8",
+    "etag": "\"3e6-993ViJJrn8pT3Yo1U7Q4+SIH1+s\"",
+    "mtime": "2026-10-13T17:38:12.077Z",
+    "size": 998,
+    "path": "../public/_nuxt/NotFoundPage.Di8Nqrq9.css"
+  },
+  "/_nuxt/LoginPage.Bl6rl119.css": {
+    "type": "text/css; charset=utf-8",
+    "etag": "\"885-ajuh+iHbybaGn8VSJPGi4Bn6EaY\"",
+    "mtime": "2026-10-13T17:38:12.075Z",
+    "size": 2181,
+    "path": "../public/_nuxt/LoginPage.Bl6rl119.css"
+  },
+  "/_nuxt/ProfilePage.D4AhGI6U.css": {
+    "type": "text/css; charset=utf-8",
+    "etag": "\"abc-c4jvcuwm5wETg4b0oqBnT5lYDS0\"",
+    "mtime": "2026-10-13T17:38:12.079Z",
+    "size": 2748,
+    "path": "../public/_nuxt/ProfilePage.D4AhGI6U.css"
+  },
+  "/_nuxt/DFTBBbcP.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"375-PhhFpEwcsNAOuOdDWMRHH2mJlyw\"",
+    "mtime": "2026-10-13T17:38:12.069Z",
+    "size": 885,
+    "path": "../public/_nuxt/DFTBBbcP.js"
+  },
+  "/_nuxt/DVjIpF94.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"394e-xw2rG8nDj7l5tVQ5c9MAKiAX7cM\"",
+    "mtime": "2026-10-13T17:38:12.070Z",
+    "size": 14670,
+    "path": "../public/_nuxt/DVjIpF94.js"
+  },
   "/_nuxt/builds/latest.json": {
     "type": "application/json",
-    "etag": "\"47-vSut560hn/tvo6qe4IbludH/Y6w\"",
-    "mtime": "2026-10-12T03:31:04.809Z",
+    "etag": "\"47-DNE4gX6VSOuL+EHMXEkey2Qesa8\"",
+    "mtime": "2026-10-13T17:38:12.652Z",
     "size": 71,
     "path": "../public/_nuxt/builds/latest.json"
   },
-  "/_nuxt/entry.4yrQgQX1.css": {
-    "type": "text/css; charset=utf-8",
-    "etag": "\"a5e7-rmq4marz8IScD9SRyFat0mAsIUs\"",
-    "mtime": "2026-10-12T03:31:04.605Z",
-    "size": 42471,
-    "path": "../public/_nuxt/entry.4yrQgQX1.css"
-  },
-  "/_nuxt/builds/meta/26cea74c-b597-4448-9e38-3f112d9c6bb5.json": {
-    "type": "application/json",
-    "etag": "\"58-oixwUR6NM3h+HShep7UipeEb1+E\"",
-    "mtime": "2026-10-12T03:31:04.809Z",
-    "size": 88,
-    "path": "../public/_nuxt/builds/meta/26cea74c-b597-4448-9e38-3f112d9c6bb5.json"
-  },
-  "/_nuxt/C_qG6vDx.js": {
+  "/_nuxt/DeqqjVNW.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"500f5-qbFUqLfRy/jzhGUnOu/ZLkGb8mk\"",
-    "mtime": "2026-10-12T03:31:04.605Z",
-    "size": 327925,
-    "path": "../public/_nuxt/C_qG6vDx.js"
+    "etag": "\"43a3-GABEEHMQI/c/KZBO+a0cJ58ePK8\"",
+    "mtime": "2026-10-13T17:38:12.071Z",
+    "size": 17315,
+    "path": "../public/_nuxt/DeqqjVNW.js"
+  },
+  "/_nuxt/builds/meta/946fad23-99c3-431b-80e6-e99d6af1d16e.json": {
+    "type": "application/json",
+    "etag": "\"58-XLYCnLa+Vsx6Z/scQNRsAiYBhfk\"",
+    "mtime": "2026-10-13T17:38:12.653Z",
+    "size": 88,
+    "path": "../public/_nuxt/builds/meta/946fad23-99c3-431b-80e6-e99d6af1d16e.json"
+  },
+  "/_nuxt/RegisterPage.BR0c8Jci.css": {
+    "type": "text/css; charset=utf-8",
+    "etag": "\"701-p7hkDykOItDIwIXHJRphSeBdGYI\"",
+    "mtime": "2026-10-13T17:38:12.084Z",
+    "size": 1793,
+    "path": "../public/_nuxt/RegisterPage.BR0c8Jci.css"
+  },
+  "/_nuxt/UsersPage.CQpRNPMF.css": {
+    "type": "text/css; charset=utf-8",
+    "etag": "\"628-mp6zJ+oCAns2p4IAoOgbofbytJk\"",
+    "mtime": "2026-10-13T17:38:12.088Z",
+    "size": 1576,
+    "path": "../public/_nuxt/UsersPage.CQpRNPMF.css"
+  },
+  "/_nuxt/YLo7nG49.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"1c3b-ugEt9hwIlIF3N0yDCQU7VEaTvzc\"",
+    "mtime": "2026-10-13T17:38:12.071Z",
+    "size": 7227,
+    "path": "../public/_nuxt/YLo7nG49.js"
   }
 };
 
@@ -4827,7 +5014,7 @@ function getAsset (id) {
 
 const METHODS = /* @__PURE__ */ new Set(["HEAD", "GET"]);
 const EncodingMap = { gzip: ".gz", br: ".br" };
-const _NELeYF = eventHandler((event) => {
+const _erFqTT = eventHandler((event) => {
   if (event.method && !METHODS.has(event.method)) {
     return;
   }
@@ -4893,13 +5080,13 @@ const _NELeYF = eventHandler((event) => {
 
 const _SxA8c9 = defineEventHandler(() => {});
 
-const _lazy_RM2oIf = () => import('../routes/renderer.mjs');
+const _lazy_yDX20a = () => import('../routes/renderer.mjs');
 
 const handlers = [
-  { route: '', handler: _NELeYF, lazy: false, middleware: true, method: undefined },
-  { route: '/__nuxt_error', handler: _lazy_RM2oIf, lazy: true, middleware: false, method: undefined },
+  { route: '', handler: _erFqTT, lazy: false, middleware: true, method: undefined },
+  { route: '/__nuxt_error', handler: _lazy_yDX20a, lazy: true, middleware: false, method: undefined },
   { route: '/__nuxt_island/**', handler: _SxA8c9, lazy: false, middleware: false, method: undefined },
-  { route: '/**', handler: _lazy_RM2oIf, lazy: true, middleware: false, method: undefined }
+  { route: '/**', handler: _lazy_yDX20a, lazy: true, middleware: false, method: undefined }
 ];
 
 function createNitroApp() {

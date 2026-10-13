@@ -15,7 +15,7 @@
     "jsxFragmentFactory": "Fragment",
     "paths": {
       "#imports": [
-        "./types/nitro-imports"
+        "../node_modules/.cache/nuxt/.nuxt/types/nitro-imports"
       ],
       "~/*": [
         "../src/*"
@@ -87,10 +87,10 @@
         "../server/*"
       ],
       "#build": [
-        "./"
+        "../node_modules/.cache/nuxt/.nuxt"
       ],
       "#build/*": [
-        "./*"
+        "../node_modules/.cache/nuxt/.nuxt/*"
       ],
       "#internal/nuxt/paths": [
         "../node_modules/@nuxt/nitro-server/dist/runtime/utils/paths"
@@ -126,13 +126,12 @@
     "../node_modules/dist/runtime/server",
     "../server/**/*",
     "../shared/**/*.d.ts",
-    "./types/nitro.d.ts"
+    "../node_modules/.cache/nuxt/.nuxt/types/nitro.d.ts"
   ],
   "exclude": [
     "../node_modules",
     "../node_modules/nuxt/node_modules",
     "../node_modules/@pinia/nuxt/node_modules",
-    "../node_modules/@nuxt/devtools/node_modules",
     "../dist"
   ]
 }

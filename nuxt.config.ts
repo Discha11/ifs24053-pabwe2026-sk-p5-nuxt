@@ -46,8 +46,19 @@ export default defineNuxtConfig({
     port: customPort,
   },
 
+  features: {
+    inlineStyles: true,
+  },
+
+  routeRules: {
+    "/**": {
+      headers: {
+        "Cache-Control": "public, max-age=0, must-revalidate",
+      },
+    },
+  },
+
   nitro: {
-    compressPublicAssets: true,
     externals: {
       inline: ["@vue/shared"],
     },
