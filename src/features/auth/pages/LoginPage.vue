@@ -1,5 +1,5 @@
 <template>
-  <AuthLayout>
+  <div class="auth-card-content">
     <div class="form-header">
       <h2 class="form-title">Selamat Datang</h2>
       <p class="form-subtitle">Masuk ke akun Delcom kamu</p>
@@ -85,13 +85,12 @@
         <RouterLink to="/auth/register" class="link">Daftar sekarang</RouterLink>
       </p>
     </form>
-  </AuthLayout>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from "vue";
 import { useRouter } from "vue-router";
-import AuthLayout from "../layouts/AuthLayout.vue";
 import { useAuthStore } from "../states/authStore";
 import {
   showSuccessDialog,

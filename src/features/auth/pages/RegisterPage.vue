@@ -1,5 +1,5 @@
 <template>
-  <AuthLayout>
+  <div class="auth-card-content">
     <div class="form-header">
       <h2 class="form-title">Buat Akun Baru</h2>
       <p class="form-subtitle">Bergabung dan mulai catat arus kasmu</p>
@@ -61,13 +61,12 @@
         <RouterLink to="/auth/login" class="link">Masuk di sini</RouterLink>
       </p>
     </form>
-  </AuthLayout>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from "vue";
 import { useRouter } from "vue-router";
-import AuthLayout from "../layouts/AuthLayout.vue";
 import { useAuthStore } from "../states/authStore";
 import {
   showSuccessDialog,

@@ -26,7 +26,9 @@
       </div>
 
       <div class="auth-card">
-        <slot />
+        <slot>
+          <RouterView />
+        </slot>
       </div>
 
       <p class="auth-footer">

@@ -3,12 +3,18 @@ import vue from "@vitejs/plugin-vue";
 import tailwindcss from "@tailwindcss/vite";
 import process from "process";
 
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), "");
+  const env = loadEnv(mode, __dirname, "");
   const port = Number(env.APP_PORT || env.PORT) || 3000;
 
   return {
+    root: __dirname,
     plugins: [vue(), tailwindcss()],
     server: {
       port,
@@ -24,7 +30,7 @@ export default defineConfig(({ mode }) => {
     test: {
       globals: true,
       environment: "jsdom",
-      setupFiles: "./src/setupTests.ts",
+      setupFiles: path.resolve(__dirname, "src/setupTests.ts"),
       coverage: {
         provider: "v8",
         reporter: ["text", "json", "html", "lcov"],
