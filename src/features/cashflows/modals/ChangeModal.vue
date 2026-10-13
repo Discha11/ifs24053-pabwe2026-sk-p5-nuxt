@@ -346,11 +346,11 @@ async function handleSubmit() {
 .btn-cancel {
   padding: 0.6rem 1.2rem;
   background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
-  color: #64748b;
+  color: #334155;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s;

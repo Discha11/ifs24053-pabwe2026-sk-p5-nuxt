@@ -131,7 +131,7 @@ async function handleLogin() {
 }
 
 .form-subtitle {
-  color: #94a3b8;
+  color: #cbd5e1;
   font-size: 0.9rem;
   margin: 0;
 }
@@ -253,7 +253,7 @@ async function handleLogin() {
 
 .form-redirect {
   text-align: center;
-  color: #64748b;
+  color: #cbd5e1;
   font-size: 0.875rem;
   margin: 0;
 }

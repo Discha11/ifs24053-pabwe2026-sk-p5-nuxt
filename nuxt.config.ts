@@ -5,7 +5,7 @@ const customPort = Number(process.env.APP_PORT || process.env.PORT) || 3000;
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: "2024-11-01",
-  devtools: { enabled: true },
+  devtools: { enabled: false },
   telemetry: false,
 
   // Disable SSR for SPA mode (client-side routing and storage)
@@ -33,11 +33,8 @@ export default defineNuxtConfig({
       rollupOptions: {
         output: {
           manualChunks(id) {
-            if (id.includes("node_modules")) {
-              if (id.includes("@toast-ui")) {
-                return "toast-ui";
-              }
-              return "vendor";
+            if (id.includes("sweetalert2")) {
+              return "sweetalert2";
             }
           },
         },
@@ -50,6 +47,7 @@ export default defineNuxtConfig({
   },
 
   nitro: {
+    compressPublicAssets: true,
     externals: {
       inline: ["@vue/shared"],
     },
@@ -57,10 +55,19 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: "Delcom Todo",
+      title: "Delcom Todo - Manajemen Arus Kas",
       htmlAttrs: {
         lang: "id",
       },
+      meta: [
+        { charset: "utf-8" },
+        { name: "viewport", content: "width=device-width, initial-scale=1" },
+        {
+          name: "description",
+          content: "Delcom Todo - Aplikasi pencatatan dan pengelolaan arus kas keuangan terintegrasi.",
+        },
+        { name: "theme-color", content: "#0ea5e9" },
+      ],
       link: [
         { rel: "icon", type: "image/svg+xml", href: "/logo.svg" },
         { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -70,8 +77,15 @@ export default defineNuxtConfig({
           crossorigin: "",
         },
         {
+          rel: "preload",
+          as: "style",
+          href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap",
+        },
+        {
           rel: "stylesheet",
-          href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap",
+          href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap",
+          media: "print",
+          onload: "this.media='all'",
         },
       ],
       bodyAttrs: {

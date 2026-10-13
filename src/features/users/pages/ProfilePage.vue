@@ -216,7 +216,7 @@ onMounted(async () => {
 }
 
 .page-subtitle {
-  color: #64748b;
+  color: #475569;
   font-size: 0.9rem;
   margin: 0;
 }
@@ -312,7 +312,7 @@ onMounted(async () => {
 
 .profile-email {
   font-size: 0.875rem;
-  color: #64748b;
+  color: #475569;
   margin: 0;
 }
 

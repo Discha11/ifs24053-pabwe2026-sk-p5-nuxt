@@ -1,5 +1,5 @@
 <template>
-  <nav class="navbar">
+  <nav class="navbar" aria-label="Navigasi Utama">
     <div class="navbar-brand">
       <div class="nav-logo">
         <svg
@@ -33,7 +33,7 @@
 
       <span class="nav-badge">Online</span>
 
-      <button id="btn-logout" class="btn-logout" @click="handleLogout">
+      <button id="btn-logout" class="btn-logout" @click="handleLogout" aria-label="Keluar dari sistem">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
@@ -169,9 +169,9 @@ async function handleLogout() {
 
 .nav-badge {
   background: #dcfce7;
-  color: #16a34a;
+  color: #166534;
   font-size: 0.7rem;
-  font-weight: 600;
+  font-weight: 700;
   padding: 0.2rem 0.55rem;
   border-radius: 20px;
 }
@@ -184,9 +184,9 @@ async function handleLogout() {
   background: #fff1f2;
   border: 1px solid #fecdd3;
   border-radius: 8px;
-  color: #e11d48;
+  color: #9f1239;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s;

@@ -160,10 +160,10 @@ onMounted(async () => {
   padding: 0.5rem 0.9rem;
   background: #f1f5f9;
   border-radius: 8px;
-  color: #64748b;
+  color: #334155;
   text-decoration: none;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   transition: all 0.2s;
 }
 
@@ -183,7 +183,7 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   padding: 3rem;
-  color: #94a3b8;
+  color: #475569;
   gap: 0.75rem;
 }
 
@@ -228,12 +228,12 @@ onMounted(async () => {
 
 .badge-inflow {
   background: #dcfce7;
-  color: #16a34a;
+  color: #166534;
 }
 
 .badge-outflow {
   background: #ffe4e6;
-  color: #e11d48;
+  color: #9f1239;
 }
 
 .detail-actions {
@@ -249,7 +249,7 @@ onMounted(async () => {
   padding: 0.45rem 0.9rem;
   border-radius: 8px;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   border: none;
@@ -258,7 +258,7 @@ onMounted(async () => {
 
 .btn-edit {
   background: #fefce8;
-  color: #ca8a04;
+  color: #854d0e;
 }
 
 .btn-edit:hover {
@@ -267,7 +267,7 @@ onMounted(async () => {
 
 .btn-delete {
   background: #fff1f2;
-  color: #e11d48;
+  color: #9f1239;
 }
 
 .btn-delete:hover {
@@ -304,12 +304,12 @@ onMounted(async () => {
 
 .nominal-display.inflow .nominal-sign,
 .nominal-display.inflow .nominal-value {
-  color: #16a34a;
+  color: #166534;
 }
 
 .nominal-display.outflow .nominal-sign,
 .nominal-display.outflow .nominal-value {
-  color: #e11d48;
+  color: #9f1239;
 }
 
 .detail-grid {
@@ -331,7 +331,7 @@ onMounted(async () => {
 .detail-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #475569;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }

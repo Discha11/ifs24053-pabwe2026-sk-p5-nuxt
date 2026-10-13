@@ -1,6 +1,6 @@
 <template>
-  <aside class="sidebar">
-    <nav class="sidebar-nav">
+  <aside class="sidebar" aria-label="Menu Samping">
+    <nav class="sidebar-nav" aria-label="Navigasi Menu Samping">
       <RouterLink
         id="nav-home"
         to="/"
@@ -111,10 +111,10 @@ function isActive(path: string): boolean {
   gap: 0.75rem;
   padding: 0.65rem 0.85rem;
   border-radius: 10px;
-  color: #64748b;
+  color: #475569;
   text-decoration: none;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   transition: all 0.15s;
 }
 
@@ -125,8 +125,8 @@ function isActive(path: string): boolean {
 
 .nav-item.active {
   background: linear-gradient(135deg, #eff6ff, #f0f9ff);
-  color: #0ea5e9;
-  font-weight: 600;
-  box-shadow: inset 3px 0 0 #0ea5e9;
+  color: #0369a1;
+  font-weight: 700;
+  box-shadow: inset 3px 0 0 #0284c7;
 }
 </style>

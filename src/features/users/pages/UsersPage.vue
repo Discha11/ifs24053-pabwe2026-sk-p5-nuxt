@@ -145,7 +145,7 @@ onMounted(async () => {
 
 .user-email {
   font-size: 0.8rem;
-  color: #64748b;
+  color: #475569;
   margin: 0 0 0.15rem;
   white-space: nowrap;
   overflow: hidden;
@@ -154,7 +154,7 @@ onMounted(async () => {
 
 .user-date {
   font-size: 0.75rem;
-  color: #94a3b8;
+  color: #475569;
   margin: 0;
 }
 </style>

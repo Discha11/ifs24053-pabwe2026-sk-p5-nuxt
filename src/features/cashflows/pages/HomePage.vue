@@ -125,35 +125,58 @@
     <div class="filter-section">
       <h2 class="section-title">Filter Transaksi</h2>
       <div class="filter-grid">
-        <select id="filter-type" v-model="filters.type" class="filter-select">
+        <label for="filter-type" class="sr-only">Jenis Transaksi</label>
+        <select
+          id="filter-type"
+          v-model="filters.type"
+          class="filter-select"
+          aria-label="Filter Jenis Transaksi"
+        >
           <option value="">Semua Jenis</option>
           <option value="inflow">Pemasukan</option>
           <option value="outflow">Pengeluaran</option>
         </select>
 
-        <select id="filter-source" v-model="filters.source" class="filter-select">
+        <label for="filter-source" class="sr-only">Sumber Dana</label>
+        <select
+          id="filter-source"
+          v-model="filters.source"
+          class="filter-select"
+          aria-label="Filter Sumber Dana"
+        >
           <option value="">Semua Sumber</option>
           <option value="cash">Tunai</option>
           <option value="savings">Tabungan</option>
           <option value="loans">Pinjaman</option>
         </select>
 
-        <select id="filter-label" v-model="filters.label" class="filter-select">
+        <label for="filter-label" class="sr-only">Label Kategori</label>
+        <select
+          id="filter-label"
+          v-model="filters.label"
+          class="filter-select"
+          aria-label="Filter Label Kategori"
+        >
           <option value="">Semua Label</option>
           <option v-for="l in store.labels" :key="l" :value="l">{{ l }}</option>
         </select>
 
+        <label for="filter-start-date" class="sr-only">Tanggal Mulai</label>
         <input
           id="filter-start-date"
           v-model="filters.start_date"
           type="date"
           class="filter-select"
+          aria-label="Tanggal Mulai"
         />
+
+        <label for="filter-end-date" class="sr-only">Tanggal Akhir</label>
         <input
           id="filter-end-date"
           v-model="filters.end_date"
           type="date"
           class="filter-select"
+          aria-label="Tanggal Akhir"
         />
 
         <button id="btn-apply-filter" class="btn-filter" @click="applyFilter">Terapkan</button>
@@ -221,6 +244,7 @@
                   :to="`/cash-flows/${cf.id}`"
                   class="action-btn btn-view"
                   title="Detail"
+                  aria-label="Detail transaksi"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -231,6 +255,7 @@
                   :id="`btn-change-${cf.id}`"
                   class="action-btn btn-edit"
                   title="Ubah"
+                  aria-label="Ubah transaksi"
                   @click="openChangeModal(cf)"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -242,6 +267,7 @@
                   :id="`btn-delete-${cf.id}`"
                   class="action-btn btn-delete"
                   title="Hapus"
+                  aria-label="Hapus transaksi"
                   @click="handleDelete(cf.id)"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -456,9 +482,9 @@ onMounted(async () => {
   background: #fff1f2;
   border: 1px solid #fecdd3;
   border-radius: 10px;
-  color: #e11d48;
+  color: #9f1239;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s;
@@ -504,9 +530,9 @@ onMounted(async () => {
 
 .stat-label {
   font-size: 0.78rem;
-  color: #64748b;
+  color: #475569;
   margin: 0 0 0.2rem;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .stat-value {
@@ -517,11 +543,11 @@ onMounted(async () => {
 }
 
 .inflow-text {
-  color: #059669;
+  color: #047857;
 }
 
 .outflow-text {
-  color: #e11d48;
+  color: #9f1239;
 }
 
 .filter-section,
@@ -564,12 +590,12 @@ onMounted(async () => {
 
 .btn-filter {
   padding: 0.55rem 1.1rem;
-  background: #0ea5e9;
+  background: #0369a1;
   color: white;
   border: none;
   border-radius: 8px;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   transition: opacity 0.2s;
@@ -582,11 +608,11 @@ onMounted(async () => {
 .btn-filter-reset {
   padding: 0.55rem 1.1rem;
   background: #f1f5f9;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  color: #334155;
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s;
@@ -597,7 +623,7 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   padding: 3rem;
-  color: #94a3b8;
+  color: #475569;
   gap: 0.75rem;
 }
 
@@ -621,7 +647,7 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   padding: 3rem;
-  color: #94a3b8;
+  color: #334155;
   gap: 1rem;
   text-align: center;
 }
@@ -639,8 +665,8 @@ onMounted(async () => {
 .transactions-table th {
   text-align: left;
   padding: 0.65rem 0.9rem;
-  color: #64748b;
-  font-weight: 600;
+  color: #475569;
+  font-weight: 700;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -662,18 +688,18 @@ onMounted(async () => {
   padding: 0.25rem 0.65rem;
   border-radius: 20px;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
 }
 
 .badge-inflow {
   background: #dcfce7;
-  color: #16a34a;
+  color: #166534;
 }
 
 .badge-outflow {
   background: #ffe4e6;
-  color: #e11d48;
+  color: #9f1239;
 }
 
 .label-cell {
@@ -682,7 +708,7 @@ onMounted(async () => {
 }
 
 .source-cell {
-  color: #64748b;
+  color: #475569;
 }
 
 .nominal-cell {
@@ -691,7 +717,7 @@ onMounted(async () => {
 }
 
 .date-cell {
-  color: #64748b;
+  color: #475569;
   white-space: nowrap;
 }
 
