@@ -30,6 +30,7 @@ export default defineConfig(({ mode }) => {
     test: {
       globals: true,
       environment: "jsdom",
+      testTimeout: 20000,
       setupFiles: path.resolve(__dirname, "src/setupTests.ts"),
       coverage: {
         provider: "v8",

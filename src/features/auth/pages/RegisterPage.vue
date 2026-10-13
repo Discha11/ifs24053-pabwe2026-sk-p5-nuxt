@@ -7,9 +7,9 @@
 
     <form id="register-form" class="auth-form" @submit.prevent="handleRegister">
       <div class="form-group">
-        <label for="name" class="form-label">Nama Lengkap</label>
+        <label for="register-name-input" class="form-label">Nama Lengkap</label>
         <input
-          id="name"
+          id="register-name-input"
           v-model="name"
           type="text"
           class="form-input"
@@ -20,9 +20,9 @@
       </div>
 
       <div class="form-group">
-        <label for="email" class="form-label">Email</label>
+        <label for="register-email-input" class="form-label">Email</label>
         <input
-          id="email"
+          id="register-email-input"
           v-model="email"
           type="email"
           class="form-input"
@@ -33,9 +33,9 @@
       </div>
 
       <div class="form-group">
-        <label for="password" class="form-label">Password</label>
+        <label for="register-password-input" class="form-label">Password</label>
         <input
-          id="password"
+          id="register-password-input"
           v-model="password"
           type="password"
           class="form-input"
@@ -47,7 +47,7 @@
       </div>
 
       <button
-        id="btn-register"
+        id="register-submit-button"
         type="submit"
         class="btn-primary"
         :disabled="authStore.isLoading"

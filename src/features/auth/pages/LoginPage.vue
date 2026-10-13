@@ -7,9 +7,9 @@
 
     <form id="login-form" class="auth-form" @submit.prevent="handleLogin">
       <div class="form-group">
-        <label for="email" class="form-label">Email</label>
+        <label for="login-email-input" class="form-label">Email</label>
         <input
-          id="email"
+          id="login-email-input"
           v-model="email"
           type="email"
           class="form-input"
@@ -20,10 +20,10 @@
       </div>
 
       <div class="form-group">
-        <label for="password" class="form-label">Password</label>
+        <label for="login-password-input" class="form-label">Password</label>
         <div class="input-wrapper">
           <input
-            id="password"
+            id="login-password-input"
             v-model="password"
             :type="showPassword ? 'text' : 'password'"
             class="form-input"
@@ -71,7 +71,7 @@
       </div>
 
       <button
-        id="btn-login"
+        id="login-submit-button"
         type="submit"
         class="btn-primary"
         :disabled="authStore.isLoading"
