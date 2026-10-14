@@ -1,9 +1,12 @@
-// src/helpers/toolsHelper.ts
-import Swal from "sweetalert2";
+async function getSwal() {
+  const mod = await import("sweetalert2");
+  return mod.default || mod;
+}
 
 // ── Dialog Utilities ─────────────────────────────────────────────────────────
 
 export async function showSuccessDialog(message: string): Promise<void> {
+  const Swal = await getSwal();
   await Swal.fire({
     icon: "success",
     title: "Berhasil",
@@ -16,6 +19,7 @@ export async function showSuccessDialog(message: string): Promise<void> {
 }
 
 export async function showErrorDialog(message: string): Promise<void> {
+  const Swal = await getSwal();
   await Swal.fire({
     icon: "error",
     title: "Gagal",
@@ -28,6 +32,7 @@ export async function showConfirmDialog(
   title: string,
   text: string
 ): Promise<boolean> {
+  const Swal = await getSwal();
   const result = await Swal.fire({
     icon: "warning",
     title,

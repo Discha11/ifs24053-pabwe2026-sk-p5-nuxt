@@ -287,7 +287,7 @@ function encodeForwardSlashes(str) {
 	return str.replaceAll("/", "\\u002F");
 }
 
-const entryFileName = "BT8bMNGU.js";
+const entryFileName = "Bx2Yhu7U.js";
 
 //#region src/runtime/server/renderer/index.ts
 const HAS_APP_TELEPORTS = !!(appTeleportAttrs.id);
