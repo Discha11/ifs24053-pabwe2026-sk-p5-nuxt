@@ -1,22 +1,21 @@
-// src/hooks/useInput.ts
 import { ref, type Ref } from "vue";
 
-export interface UseInputReturn<T> {
-  value: Ref<T>;
-  onValueChange: (newValue: T) => void;
-  reset: () => void;
-}
+/**
+ * Composable untuk mengelola state input form.
+ * Mengembalikan [value, onChange, reset] sehingga dapat dipakai seperti:
+ *   const [email, onEmailChange] = useInput("");
+ *   <input :value="email" @input="onEmailChange" />
+ */
+export function useInput(initialValue = ""): [Ref<string>, (event: Event) => void, () => void] {
+  const value = ref(initialValue);
 
-export function useInput<T>(initialValue: T): UseInputReturn<T> {
-  const value = ref<T>(initialValue) as Ref<T>;
+  const onChange = (event: Event) => {
+    value.value = (event.target as HTMLInputElement).value;
+  };
 
-  function onValueChange(newValue: T): void {
-    value.value = newValue;
-  }
-
-  function reset(): void {
+  const reset = () => {
     value.value = initialValue;
-  }
+  };
 
-  return { value, onValueChange, reset };
+  return [value, onChange, reset];
 }

@@ -1,132 +1,46 @@
+<script setup lang="ts">
+import { RouterLink } from "vue-router";
+import { LayoutDashboard, UserRound, Users, X } from "lucide-vue-next";
+
+defineProps<{ open: boolean }>();
+const emit = defineEmits<{ (e: "close"): void }>();
+
+const menus = [
+  { to: "/", label: "Ringkasan Arus Kas", icon: LayoutDashboard },
+  { to: "/users", label: "Direktori Pengguna", icon: Users },
+  { to: "/profile", label: "Profil Saya", icon: UserRound },
+];
+</script>
+
 <template>
-  <aside class="sidebar" aria-label="Menu Samping">
-    <nav class="sidebar-nav" aria-label="Navigasi Menu Samping">
-      <RouterLink
-        id="nav-home"
-        to="/"
-        class="nav-item"
-        :class="{ active: isActive('/') }"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          width="20"
-          height="20"
-        >
-          <rect x="3" y="3" width="7" height="7" rx="1" />
-          <rect x="14" y="3" width="7" height="7" rx="1" />
-          <rect x="14" y="14" width="7" height="7" rx="1" />
-          <rect x="3" y="14" width="7" height="7" rx="1" />
-        </svg>
-        <span>Ringkasan Arus Kas</span>
-      </RouterLink>
+  <div
+    v-if="open"
+    data-testid="sidebar-backdrop"
+    class="fixed inset-0 z-30 bg-slate-900/40 lg:hidden"
+    @click="emit('close')" />
 
-      <RouterLink
-        id="nav-users"
-        to="/users"
-        class="nav-item"
-        :class="{ active: isActive('/users') }"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          width="20"
-          height="20"
-        >
-          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 00-3-3.87" />
-          <path d="M16 3.13a4 4 0 010 7.75" />
-        </svg>
-        <span>Direktori Pengguna</span>
-      </RouterLink>
+  <aside
+    data-testid="sidebar"
+    class="fixed inset-y-0 left-0 z-40 w-64 -translate-x-full bg-white p-4 shadow-xl transition-transform lg:static lg:translate-x-0 lg:shadow-none lg:ring-1 lg:ring-slate-100"
+    :class="{ 'translate-x-0': open }">
+    <div class="mb-6 flex items-center justify-between lg:hidden">
+      <span class="font-extrabold">Menu</span>
+      <button type="button" data-testid="sidebar-close" aria-label="Tutup menu" @click="emit('close')">
+        <X class="h-5 w-5" />
+      </button>
+    </div>
 
+    <nav class="space-y-1">
       <RouterLink
-        id="nav-profile"
-        to="/profile"
-        class="nav-item"
-        :class="{ active: isActive('/profile') }"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          width="20"
-          height="20"
-        >
-          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
-        </svg>
-        <span>Profil Saya</span>
+        v-for="menu in menus"
+        :key="menu.to"
+        :to="menu.to"
+        exact-active-class="bg-indigo-50 text-indigo-600"
+        class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+        @click="emit('close')">
+        <component :is="menu.icon" class="h-4 w-4" />
+        {{ menu.label }}
       </RouterLink>
     </nav>
   </aside>
 </template>
-
-<script setup lang="ts">
-import { useRoute } from "vue-router";
-
-const route = useRoute();
-
-function isActive(path: string): boolean {
-  if (path === "/") {
-    return route.path === "/" || route.path.startsWith("/cash-flows");
-  }
-  return route.path.startsWith(path);
-}
-</script>
-
-<style scoped>
-.sidebar {
-  width: 240px;
-  min-height: calc(100vh - 64px);
-  background: white;
-  border-right: 1px solid #e2e8f0;
-  padding: 1.25rem 0.75rem;
-  display: flex;
-  flex-direction: column;
-  position: sticky;
-  top: 64px;
-  height: calc(100vh - 64px);
-  overflow-y: auto;
-}
-
-.sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.65rem 0.85rem;
-  border-radius: 10px;
-  color: #475569;
-  text-decoration: none;
-  font-size: 0.875rem;
-  font-weight: 600;
-  transition: all 0.15s;
-}
-
-.nav-item:hover {
-  background: #f1f5f9;
-  color: #0f172a;
-}
-
-.nav-item.active {
-  background: linear-gradient(135deg, #eff6ff, #f0f9ff);
-  color: #0369a1;
-  font-weight: 700;
-  box-shadow: inset 3px 0 0 #0284c7;
-}
-</style>

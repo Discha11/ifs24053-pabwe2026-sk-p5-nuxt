@@ -1,84 +1,31 @@
-// src/features/auth/api/authApi.test.ts
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { loginApi, registerApi, logoutApi } from "./authApi";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { apiRequest } from "../../../helpers/apiHelper";
+import { postLogin, postLogout, postRegister } from "./authApi";
 
-Object.defineProperty(globalThis, "DELCOM_BASEURL", {
-  value: "https://open-api.delcom.org/api/v1",
-  writable: true,
+vi.mock("../../../helpers/apiHelper", () => ({ apiRequest: vi.fn() }));
+
+const apiRequestMock = apiRequest as unknown as ReturnType<typeof vi.fn>;
+
+beforeEach(() => {
+  apiRequestMock.mockReset();
+  apiRequestMock.mockResolvedValue({ status: "success", message: "ok" });
 });
 
-describe("loginApi", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
-    localStorage.clear();
-  });
-  afterEach(() => vi.unstubAllGlobals());
-
-  it("returns user and token on success", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      json: async () => ({
-        status: "success",
-        data: {
-          user: { id: 1, name: "Test", email: "test@test.com" },
-          token: "tok123",
-        },
-      }),
-    } as Response);
-
-    const result = await loginApi("test@test.com", "password");
-    expect(result.token).toBe("tok123");
-    expect(result.user.name).toBe("Test");
+describe("authApi", () => {
+  it("postLogin should call /auth/login without auth", async () => {
+    const payload = { email: "a@b.c", password: "123456" };
+    await expect(postLogin(payload)).resolves.toEqual({ status: "success", message: "ok" });
+    expect(apiRequestMock).toHaveBeenCalledWith("/auth/login", { method: "POST", body: payload, auth: false });
   });
 
-  it("throws on failure", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      json: async () => ({ status: "fail", message: "Invalid" }),
-    } as Response);
-
-    await expect(loginApi("bad@test.com", "wrong")).rejects.toThrow("Invalid");
-  });
-});
-
-describe("registerApi", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
-    localStorage.clear();
-  });
-  afterEach(() => vi.unstubAllGlobals());
-
-  it("resolves on success", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      json: async () => ({ status: "success", message: "Registered" }),
-    } as Response);
-
-    await expect(
-      registerApi("Test", "test@test.com", "password")
-    ).resolves.not.toThrow();
+  it("postRegister should call /auth/register without auth", async () => {
+    const payload = { name: "A", email: "a@b.c", password: "123456" };
+    await postRegister(payload);
+    expect(apiRequestMock).toHaveBeenCalledWith("/auth/register", { method: "POST", body: payload, auth: false });
   });
 
-  it("throws on failure", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      json: async () => ({ status: "fail", message: "Email sudah digunakan" }),
-    } as Response);
-
-    await expect(
-      registerApi("Test", "dup@test.com", "password")
-    ).rejects.toThrow("Email sudah digunakan");
-  });
-});
-
-describe("logoutApi", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
-    localStorage.setItem("accessToken", "token");
-  });
-  afterEach(() => vi.unstubAllGlobals());
-
-  it("resolves on success", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      json: async () => ({ status: "success" }),
-    } as Response);
-
-    await expect(logoutApi()).resolves.not.toThrow();
+  it("postLogout should call /auth/logout", async () => {
+    await postLogout();
+    expect(apiRequestMock).toHaveBeenCalledWith("/auth/logout", { method: "POST" });
   });
 });

@@ -1,53 +1,37 @@
-// src/features/users/api/userApi.ts
-import { fetchAPI, apiGet, apiPut } from "../../../helpers/apiHelper";
+import { apiRequest } from "../../../helpers/apiHelper";
 
 export interface User {
   id: number;
   name: string;
   email: string;
-  email_verified_at: string | null;
-  photo: string;
-  created_at: string;
-  updated_at: string;
+  photo?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export async function getAllUsersApi(): Promise<{ users: User[] }> {
-  return apiGet<{ users: User[] }>("/users");
+export interface ProfilePayload {
+  name: string;
+  email: string;
 }
 
-export async function getUserByIdApi(id: number): Promise<{ user: User }> {
-  return apiGet<{ user: User }>(`/users/${id}`);
+export interface PasswordPayload {
+  password: string;
+  new_password: string;
+  new_password_confirmation: string;
 }
 
-export async function getProfileApi(): Promise<{ user: User }> {
-  return apiGet<{ user: User }>("/users/me");
-}
+export const getUsers = () => apiRequest<{ users: User[] }>("/users");
 
-export async function updateProfileApi(
-  name: string,
-  email: string
-): Promise<{ user: User }> {
-  return apiPut<{ user: User }>("/users/me", { name, email });
-}
+export const getMe = () => apiRequest<{ user: User }>("/users/me");
 
-export async function uploadPhotoApi(photo: File): Promise<void> {
+export const putMe = (payload: ProfilePayload) =>
+  apiRequest<{ user: User }>("/users/me", { method: "PUT", body: payload });
+
+export const postPhoto = (file: File) => {
   const formData = new FormData();
-  formData.append("photo", photo);
-  await fetchAPI("/users/me/photo", {
-    method: "POST",
-    body: formData,
-    isFormData: true,
-  });
-}
+  formData.append("photo", file);
+  return apiRequest("/users/me/photo", { method: "POST", body: formData });
+};
 
-export async function changePasswordApi(
-  password: string,
-  new_password: string,
-  new_password_confirmation: string
-): Promise<void> {
-  await apiPut("/users/password", {
-    password,
-    new_password,
-    new_password_confirmation,
-  });
-}
+export const putPassword = (payload: PasswordPayload) =>
+  apiRequest("/users/password", { method: "PUT", body: payload });

@@ -1,65 +1,51 @@
-// src/features/cashflows/layouts/CashFlowLayout.test.ts
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { flushPromises } from "@vue/test-utils";
+import { putAccessToken } from "../../../helpers/apiHelper";
 import { renderWithProviders } from "../../../test-utils";
+import { useUsersStore } from "../../users/states/usersStore";
 import CashFlowLayout from "./CashFlowLayout.vue";
 
-const mockReplace = vi.fn();
-vi.mock("vue-router", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("vue-router")>();
-  return {
-    ...actual,
-    useRouter: () => ({ replace: mockReplace }),
-    useRoute: () => ({ path: "/" }),
-  };
-});
-
-vi.mock("../../../helpers/toolsHelper", () => ({
-  showConfirmDialog: vi.fn().mockResolvedValue(false),
-  showSuccessDialog: vi.fn().mockResolvedValue(undefined),
-}));
-
-Object.defineProperty(globalThis, "DELCOM_BASEURL", {
-  value: "https://open-api.delcom.org/api/v1",
-  writable: true,
-});
+function setup() {
+  return renderWithProviders(CashFlowLayout, {
+    route: "/",
+    beforeMount: (pinia) => {
+      vi.spyOn(useUsersStore(pinia), "asyncGetProfile").mockResolvedValue(true);
+    },
+  });
+}
 
 describe("CashFlowLayout", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
-    mockReplace.mockClear();
-    localStorage.clear();
-    localStorage.setItem("accessToken", "token");
-    vi.mocked(fetch).mockResolvedValue({
-      json: async () => ({
-        status: "success",
-        data: {
-          user: {
-            id: 1,
-            name: "Test",
-            email: "t@t.com",
-            photo: "",
-            created_at: "",
-            updated_at: "",
-          },
-        },
-      }),
-    } as Response);
+  it("should redirect to login when user is not authenticated", async () => {
+    const { wrapper, pinia, router } = await setup();
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="route-stub"]').exists()).toBe(false);
+    expect(router.currentRoute.value.fullPath).toBe("/auth/login");
+    expect(useUsersStore(pinia).asyncGetProfile).not.toHaveBeenCalled();
   });
 
-  it("redirects to /auth/login when no token exists", () => {
-    localStorage.clear();
-    renderWithProviders(CashFlowLayout);
-    expect(mockReplace).toHaveBeenCalledWith("/auth/login");
+  it("should load profile and render navbar, sidebar and content when authenticated", async () => {
+    putAccessToken("token-1");
+    const { wrapper, pinia, router } = await setup();
+    await flushPromises();
+
+    expect(router.currentRoute.value.fullPath).toBe("/");
+    expect(useUsersStore(pinia).asyncGetProfile).toHaveBeenCalledTimes(1);
+    expect(wrapper.find("header").exists()).toBe(true);
+    expect(wrapper.find('[data-testid="sidebar"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="route-stub"]').exists()).toBe(true);
   });
 
-  it("renders navbar and sidebar", () => {
-    const { getByText } = renderWithProviders(CashFlowLayout);
-    expect(getByText("Delcom Todo")).toBeTruthy();
-    expect(getByText("Ringkasan Arus Kas")).toBeTruthy();
-  });
+  it("should toggle and close the sidebar", async () => {
+    putAccessToken("token-1");
+    const { wrapper } = await setup();
 
-  it("renders RouterView slot area", () => {
-    const { container } = renderWithProviders(CashFlowLayout);
-    expect(container.querySelector(".layout-content")).toBeTruthy();
+    expect(wrapper.find('[data-testid="sidebar-backdrop"]').exists()).toBe(false);
+
+    await wrapper.find('[data-testid="navbar-toggle"]').trigger("click");
+    expect(wrapper.find('[data-testid="sidebar-backdrop"]').exists()).toBe(true);
+
+    await wrapper.find('[data-testid="sidebar-backdrop"]').trigger("click");
+    expect(wrapper.find('[data-testid="sidebar-backdrop"]').exists()).toBe(false);
   });
 });

@@ -1,134 +1,79 @@
-// src/features/cashflows/api/cashFlowApi.test.ts
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { apiRequest } from "../../../helpers/apiHelper";
 import {
-  getCashFlowsApi,
-  getCashFlowDetailApi,
-  addCashFlowApi,
-  updateCashFlowApi,
-  deleteCashFlowApi,
-  getLabelsApi,
-  getStatsDailyApi,
-  getStatsMonthlyApi,
-  deleteAllCashFlowsApi,
+  deleteAllCashFlows,
+  deleteCashFlow,
+  getCashFlow,
+  getCashFlows,
+  getLabels,
+  getStatsDaily,
+  getStatsMonthly,
+  postCashFlow,
+  putCashFlow,
 } from "./cashFlowApi";
 
-Object.defineProperty(globalThis, "DELCOM_BASEURL", {
-  value: "https://open-api.delcom.org/api/v1",
-  writable: true,
+vi.mock("../../../helpers/apiHelper", () => ({ apiRequest: vi.fn() }));
+
+const apiRequestMock = apiRequest as unknown as ReturnType<typeof vi.fn>;
+const payload = { type: "inflow", source: "cash", label: "gaji", description: "d", nominal: 1 } as const;
+
+beforeEach(() => {
+  apiRequestMock.mockReset();
+  apiRequestMock.mockResolvedValue({ status: "success", message: "ok" });
 });
 
-const mockFetch = (data: unknown) => {
-  vi.mocked(fetch).mockResolvedValueOnce({
-    json: async () => ({ status: "success", data }),
-  } as Response);
-};
-
-const mockFetchFail = (message = "Error") => {
-  vi.mocked(fetch).mockResolvedValueOnce({
-    json: async () => ({ status: "fail", message }),
-  } as Response);
-};
-
 describe("cashFlowApi", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
-    localStorage.setItem("accessToken", "token");
-  });
-  afterEach(() => vi.unstubAllGlobals());
-
-  it("getCashFlowsApi returns cash flows and stats", async () => {
-    mockFetch({ cash_flows: [{ id: 1 }], stats: { cashflow: 1000 } });
-    const result = await getCashFlowsApi();
-    expect(result.cash_flows).toHaveLength(1);
+  it("getCashFlows should call /cash-flows with default empty query", async () => {
+    await getCashFlows();
+    expect(apiRequestMock).toHaveBeenCalledWith("/cash-flows", { query: {} });
   });
 
-  it("getCashFlowsApi applies query params", async () => {
-    mockFetch({ cash_flows: [], stats: {} });
-    await getCashFlowsApi({ type: "inflow", source: "cash" });
-    const url = vi.mocked(fetch).mock.calls[0]?.[0] as string;
-    expect(url).toContain("type=inflow");
-    expect(url).toContain("source=cash");
+  it("getCashFlows should pass filter params", async () => {
+    await getCashFlows({ type: "inflow", label: "gaji" });
+    expect(apiRequestMock).toHaveBeenCalledWith("/cash-flows", { query: { type: "inflow", label: "gaji" } });
   });
 
-  it("getCashFlowDetailApi returns cash flow", async () => {
-    mockFetch({ cash_flow: { id: 5 } });
-    const result = await getCashFlowDetailApi(5);
-    expect(result.cash_flow.id).toBe(5);
+  it("getCashFlow should call /cash-flows/:id", async () => {
+    await getCashFlow(3);
+    expect(apiRequestMock).toHaveBeenCalledWith("/cash-flows/3");
   });
 
-  it("addCashFlowApi returns cash_flow_id", async () => {
-    mockFetch({ cash_flow_id: 10 });
-    const result = await addCashFlowApi({
-      type: "inflow",
-      source: "cash",
-      label: "gaji",
-      description: "Test",
-      nominal: 1000,
-    });
-    expect(result.cash_flow_id).toBe(10);
+  it("postCashFlow should POST payload", async () => {
+    await postCashFlow(payload);
+    expect(apiRequestMock).toHaveBeenCalledWith("/cash-flows", { method: "POST", body: payload });
   });
 
-  it("updateCashFlowApi resolves", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      json: async () => ({ status: "success" }),
-    } as Response);
-    await expect(
-      updateCashFlowApi(1, {
-        type: "outflow",
-        source: "savings",
-        label: "makan",
-        description: "Makan siang",
-        nominal: 50000,
-      })
-    ).resolves.not.toThrow();
+  it("putCashFlow should PUT payload", async () => {
+    await putCashFlow(3, payload);
+    expect(apiRequestMock).toHaveBeenCalledWith("/cash-flows/3", { method: "PUT", body: payload });
   });
 
-  it("deleteCashFlowApi resolves", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      json: async () => ({ status: "success" }),
-    } as Response);
-    await expect(deleteCashFlowApi(1)).resolves.not.toThrow();
+  it("deleteCashFlow should DELETE by id", async () => {
+    await deleteCashFlow("3");
+    expect(apiRequestMock).toHaveBeenCalledWith("/cash-flows/3", { method: "DELETE" });
   });
 
-  it("getLabelsApi returns labels", async () => {
-    mockFetch({ labels: ["gaji", "makan"] });
-    const result = await getLabelsApi();
-    expect(result.labels).toContain("gaji");
+  it("getLabels should call /cash-flows/labels", async () => {
+    await getLabels();
+    expect(apiRequestMock).toHaveBeenCalledWith("/cash-flows/labels");
   });
 
-  it("getStatsDailyApi returns daily stats", async () => {
-    mockFetch({ stats_inflow: {}, stats_outflow: {}, stats_cashflow: {} });
-    const result = await getStatsDailyApi();
-    expect(result).toHaveProperty("stats_inflow");
+  it("getStatsDaily should call daily stats with default and custom params", async () => {
+    await getStatsDaily();
+    expect(apiRequestMock).toHaveBeenLastCalledWith("/cash-flows/stats/daily", { query: {} });
+    await getStatsDaily({ total_data: 7 });
+    expect(apiRequestMock).toHaveBeenLastCalledWith("/cash-flows/stats/daily", { query: { total_data: 7 } });
   });
 
-  it("getStatsDailyApi with params builds correct query", async () => {
-    mockFetch({ stats_inflow: {}, stats_outflow: {}, stats_cashflow: {} });
-    const result = await getStatsDailyApi({ end_date: "2026-10-10", total_data: 5 });
-    expect(result).toHaveProperty("stats_inflow");
+  it("getStatsMonthly should call monthly stats with default and custom params", async () => {
+    await getStatsMonthly();
+    expect(apiRequestMock).toHaveBeenLastCalledWith("/cash-flows/stats/monthly", { query: {} });
+    await getStatsMonthly({ total_data: 12 });
+    expect(apiRequestMock).toHaveBeenLastCalledWith("/cash-flows/stats/monthly", { query: { total_data: 12 } });
   });
 
-  it("getStatsMonthlyApi returns monthly stats", async () => {
-    mockFetch({ stats_inflow: {}, stats_outflow: {}, stats_cashflow: {} });
-    const result = await getStatsMonthlyApi();
-    expect(result).toHaveProperty("stats_outflow");
-  });
-
-  it("getStatsMonthlyApi with params builds correct query", async () => {
-    mockFetch({ stats_inflow: {}, stats_outflow: {}, stats_cashflow: {} });
-    const result = await getStatsMonthlyApi({ end_date: "2026-10-10", total_data: 5 });
-    expect(result).toHaveProperty("stats_outflow");
-  });
-
-  it("deleteAllCashFlowsApi resolves", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      json: async () => ({ status: "success" }),
-    } as Response);
-    await expect(deleteAllCashFlowsApi()).resolves.not.toThrow();
-  });
-
-  it("throws on API failure", async () => {
-    mockFetchFail("Unauthenticated.");
-    await expect(getCashFlowsApi()).rejects.toThrow("Unauthenticated.");
+  it("deleteAllCashFlows should DELETE collection", async () => {
+    await deleteAllCashFlows();
+    expect(apiRequestMock).toHaveBeenCalledWith("/cash-flows", { method: "DELETE" });
   });
 });

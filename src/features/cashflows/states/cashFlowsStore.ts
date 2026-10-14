@@ -1,36 +1,40 @@
-// src/features/cashflows/states/cashFlowsStore.ts
 import { defineStore } from "pinia";
-import type {
-  CashFlow,
-  CashFlowStats,
-  CashFlowQueryParams,
-  StatsDaily,
-  StatsMonthly,
-} from "../api/cashFlowApi";
+import { showErrorDialog, showSuccessDialog } from "../../../helpers/toolsHelper";
 import {
-  getCashFlowsApi,
-  getCashFlowDetailApi,
-  addCashFlowApi,
-  updateCashFlowApi,
-  deleteCashFlowApi,
-  getLabelsApi,
-  getStatsDailyApi,
-  getStatsMonthlyApi,
-  deleteAllCashFlowsApi,
+  deleteAllCashFlows,
+  deleteCashFlow,
+  getCashFlow,
+  getCashFlows,
+  getLabels,
+  getStatsDaily,
+  getStatsMonthly,
+  postCashFlow,
+  putCashFlow,
+  type CashFlow,
+  type CashFlowPayload,
+  type CashFlowQueryParams,
+  type PeriodStatsData,
+  type RawCashFlowStats,
+  type StatsQueryParams,
 } from "../api/cashFlowApi";
+
+export interface CashFlowStats {
+  cashflow: number;
+  total_inflow: number;
+  total_outflow: number;
+  cash: number;
+  savings: number;
+  loans: number;
+}
 
 export interface CashFlowsState {
   cashFlows: CashFlow[];
   cashFlow: CashFlow | null;
-  stats: CashFlowStats | null;
+  stats: CashFlowStats;
   labels: string[];
-  statsDaily: StatsDaily | null;
-  statsMonthly: StatsMonthly | null;
-
-  isLoading: boolean;
-  error: string | null;
-
-  // Mutation status flags
+  statsDaily: PeriodStatsData | null;
+  statsMonthly: PeriodStatsData | null;
+  isCashFlow: boolean;
   isCashFlowAdd: boolean;
   isCashFlowAdded: boolean;
   isCashFlowChange: boolean;
@@ -41,18 +45,38 @@ export interface CashFlowsState {
   isCashFlowDeletedAll: boolean;
 }
 
+const emptyStats = (): CashFlowStats => ({
+  cashflow: 0,
+  total_inflow: 0,
+  total_outflow: 0,
+  cash: 0,
+  savings: 0,
+  loans: 0,
+});
+
+/** Statistik dari API hanya memuat kunci yang punya nilai, sehingga default-nya 0. */
+const num = (value: number | undefined): number => value ?? 0;
+
+export function normalizeStats(raw: RawCashFlowStats): CashFlowStats {
+  return {
+    cashflow: num(raw.cashflow),
+    total_inflow: num(raw.total_inflow),
+    total_outflow: num(raw.total_outflow),
+    cash: num(raw.total_inflow_cash) - num(raw.total_outflow_cash),
+    savings: num(raw.total_inflow_savings) - num(raw.total_outflow_savings),
+    loans: num(raw.total_inflow_loans) - num(raw.total_outflow_loans),
+  };
+}
+
 export const useCashFlowsStore = defineStore("cashFlows", {
   state: (): CashFlowsState => ({
     cashFlows: [],
     cashFlow: null,
-    stats: null,
+    stats: emptyStats(),
     labels: [],
     statsDaily: null,
     statsMonthly: null,
-
-    isLoading: false,
-    error: null,
-
+    isCashFlow: false,
     isCashFlowAdd: false,
     isCashFlowAdded: false,
     isCashFlowChange: false,
@@ -62,157 +86,119 @@ export const useCashFlowsStore = defineStore("cashFlows", {
     isCashFlowDeleteAll: false,
     isCashFlowDeletedAll: false,
   }),
-
-  getters: {
-    totalInflow: (state) => state.stats?.total_inflow ?? 0,
-    totalOutflow: (state) => state.stats?.total_outflow ?? 0,
-    netCashflow: (state) => state.stats?.cashflow ?? 0,
-  },
-
   actions: {
-    async fetchCashFlows(params?: CashFlowQueryParams): Promise<void> {
-      this.isLoading = true;
-      this.error = null;
-      try {
-        const data = await getCashFlowsApi(params);
-        this.cashFlows = data.cash_flows;
-        this.stats = data.stats;
-      } catch (err) {
-        this.error =
-          err instanceof Error ? err.message : "Gagal mengambil data arus kas";
-        throw err;
-      } finally {
-        this.isLoading = false;
+    async asyncGetCashFlows(params: CashFlowQueryParams = {}): Promise<boolean> {
+      this.isCashFlow = true;
+      const result = await getCashFlows(params);
+      this.isCashFlow = false;
+
+      if (result.status !== "success") {
+        await showErrorDialog(result.message);
+        return false;
       }
+      this.cashFlows = result.data.cash_flows;
+      this.stats = normalizeStats(result.data.stats);
+      return true;
     },
 
-    async fetchCashFlowDetail(id: number): Promise<void> {
-      this.isLoading = true;
-      this.error = null;
-      try {
-        const data = await getCashFlowDetailApi(id);
-        this.cashFlow = data.cash_flow;
-      } catch (err) {
-        this.error =
-          err instanceof Error ? err.message : "Gagal mengambil detail arus kas";
-        throw err;
-      } finally {
-        this.isLoading = false;
+    async asyncGetCashFlow(id: number | string): Promise<boolean> {
+      this.isCashFlow = true;
+      const result = await getCashFlow(id);
+      this.isCashFlow = false;
+
+      if (result.status !== "success") {
+        await showErrorDialog(result.message);
+        return false;
       }
+      this.cashFlow = result.data.cash_flow;
+      return true;
     },
 
-    async addCashFlow(payload: {
-      type: "inflow" | "outflow";
-      source: "cash" | "savings" | "loans";
-      label: string;
-      description: string;
-      nominal: number;
-    }): Promise<void> {
+    async asyncGetLabels(): Promise<boolean> {
+      const result = await getLabels();
+      if (result.status !== "success") {
+        return false;
+      }
+      this.labels = result.data.labels;
+      return true;
+    },
+
+    async asyncGetStatsDaily(params: StatsQueryParams = {}): Promise<boolean> {
+      const result = await getStatsDaily(params);
+      if (result.status !== "success") {
+        return false;
+      }
+      this.statsDaily = result.data;
+      return true;
+    },
+
+    async asyncGetStatsMonthly(params: StatsQueryParams = {}): Promise<boolean> {
+      const result = await getStatsMonthly(params);
+      if (result.status !== "success") {
+        return false;
+      }
+      this.statsMonthly = result.data;
+      return true;
+    },
+
+    async asyncAddCashFlow(payload: CashFlowPayload): Promise<boolean> {
       this.isCashFlowAdd = true;
       this.isCashFlowAdded = false;
-      this.error = null;
-      try {
-        await addCashFlowApi(payload);
-        this.isCashFlowAdded = true;
-      } catch (err) {
-        this.error =
-          err instanceof Error ? err.message : "Gagal menambahkan arus kas";
-        throw err;
-      } finally {
-        this.isCashFlowAdd = false;
+      const result = await postCashFlow(payload);
+      this.isCashFlowAdd = false;
+
+      if (result.status !== "success") {
+        await showErrorDialog(result.message);
+        return false;
       }
+      this.isCashFlowAdded = true;
+      await showSuccessDialog(result.message);
+      return true;
     },
 
-    async updateCashFlow(
-      id: number,
-      payload: {
-        type: "inflow" | "outflow";
-        source: "cash" | "savings" | "loans";
-        label: string;
-        description: string;
-        nominal: number;
-      }
-    ): Promise<void> {
+    async asyncChangeCashFlow(id: number | string, payload: CashFlowPayload): Promise<boolean> {
       this.isCashFlowChange = true;
       this.isCashFlowChanged = false;
-      this.error = null;
-      try {
-        await updateCashFlowApi(id, payload);
-        this.isCashFlowChanged = true;
-      } catch (err) {
-        this.error =
-          err instanceof Error ? err.message : "Gagal mengubah arus kas";
-        throw err;
-      } finally {
-        this.isCashFlowChange = false;
+      const result = await putCashFlow(id, payload);
+      this.isCashFlowChange = false;
+
+      if (result.status !== "success") {
+        await showErrorDialog(result.message);
+        return false;
       }
+      this.isCashFlowChanged = true;
+      await showSuccessDialog(result.message);
+      return true;
     },
 
-    async deleteCashFlow(id: number): Promise<void> {
+    async asyncDeleteCashFlow(id: number | string): Promise<boolean> {
       this.isCashFlowDelete = true;
       this.isCashFlowDeleted = false;
-      this.error = null;
-      try {
-        await deleteCashFlowApi(id);
-        this.isCashFlowDeleted = true;
-        this.cashFlows = this.cashFlows.filter((cf) => cf.id !== id);
-      } catch (err) {
-        this.error =
-          err instanceof Error ? err.message : "Gagal menghapus arus kas";
-        throw err;
-      } finally {
-        this.isCashFlowDelete = false;
+      const result = await deleteCashFlow(id);
+      this.isCashFlowDelete = false;
+
+      if (result.status !== "success") {
+        await showErrorDialog(result.message);
+        return false;
       }
+      this.isCashFlowDeleted = true;
+      await showSuccessDialog(result.message);
+      return true;
     },
 
-    async fetchLabels(): Promise<void> {
-      try {
-        const data = await getLabelsApi();
-        this.labels = data.labels;
-      } catch {
-        // ignore
-      }
-    },
-
-    async fetchStatsDaily(): Promise<void> {
-      try {
-        this.statsDaily = await getStatsDailyApi();
-      } catch {
-        // ignore
-      }
-    },
-
-    async fetchStatsMonthly(): Promise<void> {
-      try {
-        this.statsMonthly = await getStatsMonthlyApi();
-      } catch {
-        // ignore
-      }
-    },
-
-    async deleteAllCashFlows(): Promise<void> {
+    async asyncDeleteAllCashFlows(): Promise<boolean> {
       this.isCashFlowDeleteAll = true;
       this.isCashFlowDeletedAll = false;
-      this.error = null;
-      try {
-        await deleteAllCashFlowsApi();
-        this.cashFlows = [];
-        this.stats = null;
-        this.isCashFlowDeletedAll = true;
-      } catch (err) {
-        this.error =
-          err instanceof Error ? err.message : "Gagal menghapus semua arus kas";
-        throw err;
-      } finally {
-        this.isCashFlowDeleteAll = false;
-      }
-    },
+      const result = await deleteAllCashFlows();
+      this.isCashFlowDeleteAll = false;
 
-    resetMutationFlags(): void {
-      this.isCashFlowAdded = false;
-      this.isCashFlowChanged = false;
-      this.isCashFlowDeleted = false;
-      this.isCashFlowDeletedAll = false;
+      if (result.status !== "success") {
+        await showErrorDialog(result.message);
+        return false;
+      }
+      this.isCashFlowDeletedAll = true;
+      await showSuccessDialog(result.message);
+      return true;
     },
   },
 });

@@ -1,105 +1,75 @@
-// src/helpers/apiHelper.ts
+const TOKEN_KEY = "accessToken";
 
-const BASE_URL: string = DELCOM_BASEURL;
+export interface ApiResult<T = any> {
+  status: "success" | "fail" | "error";
+  message: string;
+  data?: T;
+}
 
-// ── Token Utilities ──────────────────────────────────────────────────────────
+export interface RequestOptions {
+  method?: string;
+  query?: Record<string, unknown>;
+  body?: unknown;
+  auth?: boolean;
+}
 
 export function getAccessToken(): string | null {
-  return localStorage.getItem("accessToken");
+  return localStorage.getItem(TOKEN_KEY);
 }
 
-export function putAccessToken(token: string): void {
-  localStorage.setItem("accessToken", token);
-}
-
-export function removeAccessToken(): void {
-  localStorage.removeItem("accessToken");
-}
-
-// ── HTTP Helpers ─────────────────────────────────────────────────────────────
-
-type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
-
-interface FetchOptions {
-  method?: HttpMethod;
-  body?: unknown;
-  headers?: Record<string, string>;
-  useAuth?: boolean;
-  isFormData?: boolean;
-}
-
-export async function fetchAPI<T = unknown>(
-  endpoint: string,
-  options: FetchOptions = {}
-): Promise<T> {
-  const {
-    method = "GET",
-    body,
-    headers: extraHeaders = {},
-    useAuth = true,
-    isFormData = false,
-  } = options;
-
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-    ...extraHeaders,
-  };
-
-  if (!isFormData) {
-    headers["Content-Type"] = "application/json";
+export function putAccessToken(token: string | null): void {
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
   }
+}
 
-  if (useAuth) {
-    const token = getAccessToken();
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
+export function buildUrl(path: string, query: Record<string, unknown> = {}): string {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") {
+      return;
     }
-  }
-
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
-    method,
-    headers,
-    body: isFormData
-      ? (body as FormData)
-      : body !== undefined
-        ? JSON.stringify(body)
-        : undefined,
+    params.append(key, String(value));
   });
+  const queryString = params.toString();
+  const url = `${DELCOM_BASEURL}${path}`;
+  return queryString ? `${url}?${queryString}` : url;
+}
 
-  const data = (await response.json()) as {
-    status: string;
-    message: string;
-    data?: T;
-  };
+/**
+ * Wrapper fetch ke Delcom REST API.
+ * Selalu mengembalikan objek hasil (tidak pernah throw) agar mudah ditangani store.
+ */
+export async function apiRequest<T = any>(
+  path: string,
+  options: RequestOptions = {}
+): Promise<ApiResult<T>> {
+  const { method = "GET", query, body, auth = true } = options;
 
-  if (data.status !== "success") {
-    throw new Error(data.message ?? "Terjadi kesalahan pada server");
+  const headers: Record<string, string> = { Accept: "application/json" };
+  const token = getAccessToken();
+  if (auth && token) {
+    headers.Authorization = `Bearer ${token}`;
   }
 
-  return (data.data as T) ?? (data as unknown as T);
-}
+  let payload: BodyInit | undefined;
+  if (body instanceof FormData) {
+    payload = body;
+  } else if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
+    payload = JSON.stringify(body);
+  }
 
-// ── Named convenience wrappers ────────────────────────────────────────────────
-
-export function apiGet<T = unknown>(endpoint: string): Promise<T> {
-  return fetchAPI<T>(endpoint, { method: "GET" });
-}
-
-export function apiPost<T = unknown>(
-  endpoint: string,
-  body: unknown,
-  isFormData = false
-): Promise<T> {
-  return fetchAPI<T>(endpoint, { method: "POST", body, isFormData });
-}
-
-export function apiPut<T = unknown>(
-  endpoint: string,
-  body: unknown
-): Promise<T> {
-  return fetchAPI<T>(endpoint, { method: "PUT", body });
-}
-
-export function apiDelete<T = unknown>(endpoint: string): Promise<T> {
-  return fetchAPI<T>(endpoint, { method: "DELETE" });
+  try {
+    const response = await fetch(buildUrl(path, query), {
+      method,
+      headers,
+      body: payload,
+    });
+    return (await response.json()) as ApiResult<T>;
+  } catch (error) {
+    return { status: "error", message: (error as Error).message };
+  }
 }

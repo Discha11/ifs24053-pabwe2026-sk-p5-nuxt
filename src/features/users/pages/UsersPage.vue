@@ -1,160 +1,50 @@
-<template>
-  <div class="users-page">
-    <div class="page-header">
-      <h1 class="page-title">Direktori Pengguna</h1>
-      <p class="page-subtitle">Seluruh pengguna yang terdaftar dalam sistem</p>
-    </div>
-
-    <div v-if="store.isLoading" class="loading-state">
-      <div class="loading-spinner"></div>
-      <p>Memuat data pengguna...</p>
-    </div>
-
-    <div v-else class="users-grid">
-      <div
-        v-for="user in store.users"
-        :key="user.id"
-        class="user-card"
-      >
-        <img
-          :src="user.photo"
-          :alt="user.name"
-          class="user-avatar"
-          @error="onAvatarError($event, user.name)"
-        />
-        <div class="user-info">
-          <p class="user-name">{{ user.name }}</p>
-          <p class="user-email">{{ user.email }}</p>
-          <p class="user-date">Bergabung: {{ formatDate(user.created_at) }}</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { onMounted } from "vue";
+import { UserRound } from "lucide-vue-next";
+import { resolvePhotoUrl } from "../../../helpers/toolsHelper";
 import { useUsersStore } from "../states/usersStore";
-import { formatDate } from "../../../helpers/toolsHelper";
 
-const store = useUsersStore();
+const usersStore = useUsersStore();
 
-function onAvatarError(e: Event, name: string) {
-  const img = e.target as HTMLImageElement;
-  img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0ea5e9&color=fff`;
-}
-
-onMounted(async () => {
-  await store.fetchUsers();
+onMounted(() => {
+  usersStore.asyncGetUsers();
 });
 </script>
 
-<style scoped>
-.users-page {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
+<template>
+  <section>
+    <header class="mb-6">
+      <h1 class="text-2xl font-extrabold">Direktori Pengguna</h1>
+      <p class="text-sm text-slate-500">Seluruh pengguna yang terdaftar di Delcom Open API.</p>
+    </header>
 
-.page-header {
-  margin-bottom: 0.5rem;
-}
+    <p v-if="usersStore.isUsers" data-testid="users-loading" class="text-slate-500">Memuat data pengguna...</p>
+    <p v-else-if="usersStore.users.length === 0" data-testid="users-empty" class="text-slate-500">
+      Belum ada pengguna.
+    </p>
 
-.page-title {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: #0f172a;
-  margin: 0 0 0.2rem;
-}
-
-.page-subtitle {
-  color: #64748b;
-  font-size: 0.9rem;
-  margin: 0;
-}
-
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 3rem;
-  color: #94a3b8;
-  gap: 0.75rem;
-}
-
-.loading-spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid #e2e8f0;
-  border-top-color: #0ea5e9;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.users-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 1rem;
-}
-
-.user-card {
-  background: white;
-  border-radius: 14px;
-  padding: 1.25rem;
-  border: 1px solid #e2e8f0;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.user-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.user-avatar {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid #e2e8f0;
-  flex-shrink: 0;
-}
-
-.user-info {
-  min-width: 0;
-}
-
-.user-name {
-  font-weight: 700;
-  color: #0f172a;
-  font-size: 0.95rem;
-  margin: 0 0 0.15rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.user-email {
-  font-size: 0.8rem;
-  color: #475569;
-  margin: 0 0 0.15rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.user-date {
-  font-size: 0.75rem;
-  color: #475569;
-  margin: 0;
-}
-</style>
+    <ul v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="users-list">
+      <li
+        v-for="user in usersStore.users"
+        :key="user.id"
+        class="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+        <img
+          v-if="resolvePhotoUrl(user.photo)"
+          :src="resolvePhotoUrl(user.photo)"
+          :alt="user.name"
+          width="48"
+          height="48"
+          loading="lazy"
+          decoding="async"
+          class="h-12 w-12 rounded-full object-cover" />
+        <span v-else class="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+          <UserRound class="h-6 w-6" />
+        </span>
+        <div class="min-w-0">
+          <p class="truncate font-semibold">{{ user.name }}</p>
+          <p class="truncate text-sm text-slate-500">{{ user.email }}</p>
+        </div>
+      </li>
+    </ul>
+  </section>
+</template>

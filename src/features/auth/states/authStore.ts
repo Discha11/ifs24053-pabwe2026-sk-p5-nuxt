@@ -1,101 +1,72 @@
-// src/features/auth/states/authStore.ts
 import { defineStore } from "pinia";
-import { loginApi, registerApi, logoutApi } from "../api/authApi";
+import { getAccessToken, putAccessToken } from "../../../helpers/apiHelper";
+import { showErrorDialog, showSuccessDialog } from "../../../helpers/toolsHelper";
 import {
-  putAccessToken,
-  removeAccessToken,
-  getAccessToken,
-} from "../../../helpers/apiHelper";
-
-export interface AuthUser {
-  id: number;
-  name: string;
-  email: string;
-  email_verified_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
+  postLogin,
+  postLogout,
+  postRegister,
+  type AuthUser,
+  type LoginPayload,
+  type RegisterPayload,
+} from "../api/authApi";
 
 export interface AuthState {
+  token: string | null;
   user: AuthUser | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
+  isAuthLogin: boolean;
+  isAuthRegister: boolean;
+  isAuthLogout: boolean;
 }
 
 export const useAuthStore = defineStore("auth", {
   state: (): AuthState => ({
+    token: getAccessToken(),
     user: null,
-    isAuthenticated: false,
-    isLoading: false,
-    error: null,
+    isAuthLogin: false,
+    isAuthRegister: false,
+    isAuthLogout: false,
   }),
-
   getters: {
-    currentUser: (state) => state.user,
-    isLoggedIn: (state) => state.isAuthenticated,
+    isAuthenticated: (state): boolean => Boolean(state.token),
   },
-
   actions: {
-    async login(email: string, password: string): Promise<void> {
-      this.isLoading = true;
-      this.error = null;
-      try {
-        const data = await loginApi(email, password);
-        putAccessToken(data.token);
-        this.user = data.user;
-        this.isAuthenticated = true;
-      } catch (err) {
-        this.error = err instanceof Error ? err.message : "Login gagal";
-        throw err;
-      } finally {
-        this.isLoading = false;
+    async asyncSetIsAuthLogin(payload: LoginPayload): Promise<boolean> {
+      this.isAuthLogin = true;
+      const result = await postLogin(payload);
+      this.isAuthLogin = false;
+
+      if (result.status !== "success") {
+        await showErrorDialog(result.message);
+        return false;
       }
+
+      putAccessToken(result.data.token);
+      this.token = result.data.token;
+      this.user = result.data.user;
+      return true;
     },
 
-    async register(
-      name: string,
-      email: string,
-      password: string
-    ): Promise<void> {
-      this.isLoading = true;
-      this.error = null;
-      try {
-        await registerApi(name, email, password);
-      } catch (err) {
-        this.error = err instanceof Error ? err.message : "Registrasi gagal";
-        throw err;
-      } finally {
-        this.isLoading = false;
+    async asyncSetIsAuthRegister(payload: RegisterPayload): Promise<boolean> {
+      this.isAuthRegister = true;
+      const result = await postRegister(payload);
+      this.isAuthRegister = false;
+
+      if (result.status !== "success") {
+        await showErrorDialog(result.message);
+        return false;
       }
+
+      await showSuccessDialog(result.message);
+      return true;
     },
 
-    async logout(): Promise<void> {
-      this.isLoading = true;
-      try {
-        await logoutApi();
-      } catch {
-        // silently ignore logout errors
-      } finally {
-        removeAccessToken();
-        this.user = null;
-        this.isAuthenticated = false;
-        this.isLoading = false;
-      }
-    },
-
-    checkAuth(): boolean {
-      const token = getAccessToken();
-      if (token) {
-        this.isAuthenticated = true;
-        return true;
-      }
-      return false;
-    },
-
-    setUser(user: AuthUser): void {
-      this.user = user;
-      this.isAuthenticated = true;
+    async asyncSetIsAuthLogout(): Promise<void> {
+      this.isAuthLogout = true;
+      await postLogout();
+      putAccessToken(null);
+      this.token = null;
+      this.user = null;
+      this.isAuthLogout = false;
     },
   },
 });

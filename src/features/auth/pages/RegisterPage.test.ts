@@ -1,102 +1,80 @@
-// src/features/auth/pages/RegisterPage.test.ts
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent } from "@testing-library/vue";
+import { describe, expect, it, vi } from "vitest";
 import { flushPromises } from "@vue/test-utils";
 import { renderWithProviders } from "../../../test-utils";
-import RegisterPage from "./RegisterPage.vue";
 import { useAuthStore } from "../states/authStore";
-import { showSuccessDialog, showErrorDialog } from "../../../helpers/toolsHelper";
+import RegisterPage from "./RegisterPage.vue";
 
-const mockPush = vi.fn();
-vi.mock("vue-router", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("vue-router")>();
-  return {
-    ...actual,
-    useRouter: () => ({ push: mockPush, replace: vi.fn() }),
-  };
-});
+async function setup(registerResult: boolean) {
+  return renderWithProviders(RegisterPage, {
+    route: "/auth/register",
+    beforeMount: (pinia) => {
+      vi.spyOn(useAuthStore(pinia), "asyncSetIsAuthRegister").mockResolvedValue(registerResult);
+    },
+  });
+}
 
-vi.mock("../../../helpers/toolsHelper", () => ({
-  showSuccessDialog: vi.fn().mockResolvedValue(undefined),
-  showErrorDialog: vi.fn().mockResolvedValue(undefined),
-}));
-
-Object.defineProperty(globalThis, "DELCOM_BASEURL", {
-  value: "https://open-api.delcom.org/api/v1",
-  writable: true,
-});
+async function fill(wrapper: any, name: string, email: string, password: string) {
+  await wrapper.find("#name").setValue(name);
+  await wrapper.find("#email").setValue(email);
+  await wrapper.find("#password").setValue(password);
+}
 
 describe("RegisterPage", () => {
-  beforeEach(() => {
-    localStorage.clear();
-    mockPush.mockClear();
-    vi.clearAllMocks();
+  it("should render name, email and password inputs", async () => {
+    const { wrapper } = await setup(true);
+    expect(wrapper.find("#name").exists()).toBe(true);
+    expect(wrapper.find("#email").exists()).toBe(true);
+    expect(wrapper.find("#password").exists()).toBe(true);
+    expect(wrapper.text()).toContain("Daftar Sekarang");
   });
 
-  it("renders name, email, and password inputs", () => {
-    const { getByLabelText } = renderWithProviders(RegisterPage);
-    expect(getByLabelText("Nama Lengkap")).toBeTruthy();
-    expect(getByLabelText("Email")).toBeTruthy();
-    expect(getByLabelText("Password")).toBeTruthy();
+  it("should show error when a field is empty", async () => {
+    const { wrapper, pinia } = await setup(true);
+    await wrapper.find("form").trigger("submit");
+
+    expect(wrapper.find('[data-testid="register-error"]').text()).toContain("wajib diisi");
+    expect(useAuthStore(pinia).asyncSetIsAuthRegister).not.toHaveBeenCalled();
   });
 
-  it("renders register button", () => {
-    const { getByRole } = renderWithProviders(RegisterPage);
-    expect(getByRole("button", { name: /daftar/i })).toBeTruthy();
+  it("should show error when password is too short", async () => {
+    const { wrapper, pinia } = await setup(true);
+    await fill(wrapper, "Delcom", "a@b.c", "123");
+    await wrapper.find("form").trigger("submit");
+
+    expect(wrapper.find('[data-testid="register-error"]').text()).toContain("minimal 6");
+    expect(useAuthStore(pinia).asyncSetIsAuthRegister).not.toHaveBeenCalled();
   });
 
-  it("renders link to login", () => {
-    const { getByText } = renderWithProviders(RegisterPage);
-    expect(getByText("Masuk di sini")).toBeTruthy();
-  });
-
-  it("handles successful registration", async () => {
-    const { getByLabelText, getByRole } = renderWithProviders(RegisterPage);
-    const store = useAuthStore();
-    vi.spyOn(store, "register").mockResolvedValueOnce(undefined as never);
-
-    await fireEvent.update(getByLabelText("Nama Lengkap"), "John Doe");
-    await fireEvent.update(getByLabelText("Email"), "john@example.com");
-    await fireEvent.update(getByLabelText("Password"), "secret123");
-    await fireEvent.click(getByRole("button", { name: /daftar/i }));
-
-    expect(store.register).toHaveBeenCalledWith("John Doe", "john@example.com", "secret123");
-    expect(showSuccessDialog).toHaveBeenCalledWith("Pendaftaran berhasil! Silakan masuk.");
-    expect(mockPush).toHaveBeenCalledWith("/auth/login");
-  });
-
-  it("handles registration failure with Error instance", async () => {
-    const { getByLabelText, getByRole } = renderWithProviders(RegisterPage);
-    const store = useAuthStore();
-    vi.spyOn(store, "register").mockRejectedValueOnce(new Error("Email sudah terdaftar"));
-
-    await fireEvent.update(getByLabelText("Nama Lengkap"), "John Doe");
-    await fireEvent.update(getByLabelText("Email"), "john@example.com");
-    await fireEvent.update(getByLabelText("Password"), "secret123");
-    await fireEvent.click(getByRole("button", { name: /daftar/i }));
-
-    expect(showErrorDialog).toHaveBeenCalledWith("Email sudah terdaftar");
-  });
-
-  it("handles registration failure with non-Error object", async () => {
-    const { getByLabelText, getByRole } = renderWithProviders(RegisterPage);
-    const store = useAuthStore();
-    vi.spyOn(store, "register").mockRejectedValueOnce("Error string");
-
-    await fireEvent.update(getByLabelText("Nama Lengkap"), "John Doe");
-    await fireEvent.update(getByLabelText("Email"), "john@example.com");
-    await fireEvent.update(getByLabelText("Password"), "secret123");
-    await fireEvent.click(getByRole("button", { name: /daftar/i }));
-
-    expect(showErrorDialog).toHaveBeenCalledWith("Terjadi kesalahan. Coba lagi.");
-  });
-
-  it("shows loading spinner and disabled button when authStore.isLoading is true", async () => {
-    const { getByText, container } = renderWithProviders(RegisterPage);
-    const store = useAuthStore();
-    store.isLoading = true;
+  it("should register and navigate to login on success", async () => {
+    const { wrapper, pinia, router } = await setup(true);
+    await fill(wrapper, "Delcom", "a@b.c", "123456");
+    await wrapper.find("form").trigger("submit");
     await flushPromises();
-    expect(getByText("Memproses...")).toBeTruthy();
-    expect(container.querySelector(".spinner")).toBeTruthy();
+
+    expect(useAuthStore(pinia).asyncSetIsAuthRegister).toHaveBeenCalledWith({
+      name: "Delcom",
+      email: "a@b.c",
+      password: "123456",
+    });
+    expect(router.currentRoute.value.fullPath).toBe("/auth/login");
+  });
+
+  it("should stay on register page when registration fails", async () => {
+    const { wrapper, router } = await setup(false);
+    await fill(wrapper, "Delcom", "a@b.c", "123456");
+    await wrapper.find("form").trigger("submit");
+    await flushPromises();
+
+    expect(router.currentRoute.value.fullPath).toBe("/auth/register");
+  });
+
+  it("should disable submit button while loading", async () => {
+    const { wrapper, pinia } = await setup(true);
+    useAuthStore(pinia).isAuthRegister = true;
+    await wrapper.vm.$nextTick();
+
+    const button = wrapper.find('button[type="submit"]');
+    expect(button.attributes("disabled")).toBeDefined();
+    expect(button.text()).toContain("Memproses...");
   });
 });

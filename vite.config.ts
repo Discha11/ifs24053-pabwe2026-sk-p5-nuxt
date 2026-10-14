@@ -3,18 +3,12 @@ import vue from "@vitejs/plugin-vue";
 import tailwindcss from "@tailwindcss/vite";
 import process from "process";
 
-import { fileURLToPath } from "node:url";
-import path from "node:path";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, __dirname, "");
+  const env = loadEnv(mode, process.cwd(), "");
   const port = Number(env.APP_PORT || env.PORT) || 3000;
 
   return {
-    root: __dirname,
     plugins: [vue(), tailwindcss()],
     server: {
       port,
@@ -26,13 +20,14 @@ export default defineConfig(({ mode }) => {
       DELCOM_BASEURL: JSON.stringify(
         env.VITE_DELCOM_BASEURL || "https://open-api.delcom.org/api/v1"
       ),
+      DELCOM_ORIGIN: JSON.stringify(
+        new URL(env.VITE_DELCOM_BASEURL || "https://open-api.delcom.org/api/v1").origin
+      ),
     },
     test: {
       globals: true,
       environment: "jsdom",
-      testTimeout: 20000,
-      fileParallelism: false,
-      setupFiles: path.resolve(__dirname, "src/setupTests.ts"),
+      setupFiles: "./src/setupTests.ts",
       coverage: {
         provider: "v8",
         reporter: ["text", "json", "html", "lcov"],

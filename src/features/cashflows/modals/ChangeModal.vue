@@ -1,398 +1,122 @@
-<template>
-  <Teleport to="body">
-    <div v-if="isOpen" class="modal-overlay" @click.self="$emit('close')">
-      <div class="modal-box">
-        <div class="modal-header">
-          <h3 class="modal-title">Ubah Arus Kas</h3>
-          <button class="modal-close" @click="$emit('close')" aria-label="Tutup">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
-
-        <form id="change-cashflow-form" class="modal-form" @submit.prevent="handleSubmit">
-          <!-- Type -->
-          <div class="form-group">
-            <label class="form-label">Jenis Arus Kas</label>
-            <div class="radio-group">
-              <label
-                class="radio-card"
-                :class="{ selected: form.type === 'inflow' }"
-              >
-                <input v-model="form.type" type="radio" value="inflow" />
-                <span class="radio-dot inflow-dot"></span>
-                <span>Pemasukan (Inflow)</span>
-              </label>
-              <label
-                class="radio-card"
-                :class="{ selected: form.type === 'outflow' }"
-              >
-                <input v-model="form.type" type="radio" value="outflow" />
-                <span class="radio-dot outflow-dot"></span>
-                <span>Pengeluaran (Outflow)</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Source -->
-          <div class="form-group">
-            <label class="form-label">Sumber Dana</label>
-            <select id="change-source" v-model="form.source" class="form-select" required>
-              <option value="cash">Tunai (Cash)</option>
-              <option value="savings">Tabungan (Savings)</option>
-              <option value="loans">Pinjaman (Loans)</option>
-            </select>
-          </div>
-
-          <!-- Label -->
-          <div class="form-group">
-            <label class="form-label">Label / Kategori</label>
-            <input
-              id="change-label"
-              v-model="form.label"
-              type="text"
-              class="form-input"
-              placeholder="contoh: gaji, makan, transportasi"
-              required
-              list="label-suggestions-change"
-            />
-            <datalist id="label-suggestions-change">
-              <option
-                v-for="l in labels"
-                :key="l"
-                :value="l"
-              />
-            </datalist>
-          </div>
-
-          <!-- Nominal -->
-          <div class="form-group">
-            <label class="form-label">Nominal (Rp)</label>
-            <input
-              id="change-nominal"
-              v-model.number="form.nominal"
-              type="number"
-              class="form-input"
-              placeholder="0"
-              min="1"
-              required
-            />
-          </div>
-
-          <!-- Description -->
-          <div class="form-group">
-            <label class="form-label">Deskripsi</label>
-            <textarea
-              id="change-description"
-              v-model="form.description"
-              class="form-textarea"
-              placeholder="Keterangan transaksi..."
-              rows="3"
-              required
-            ></textarea>
-          </div>
-
-          <div class="modal-actions">
-            <button type="button" class="btn-cancel" @click="$emit('close')">
-              Batal
-            </button>
-            <button
-              id="btn-change-submit"
-              type="submit"
-              class="btn-submit"
-              :disabled="store.isCashFlowChange"
-            >
-              <span v-if="store.isCashFlowChange" class="spinner"></span>
-              {{ store.isCashFlowChange ? "Menyimpan..." : "Simpan Perubahan" }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </Teleport>
-</template>
-
 <script setup lang="ts">
-import { reactive, watch } from "vue";
+import { reactive, ref } from "vue";
+import { X } from "lucide-vue-next";
+import { SOURCE_LABELS, TYPE_LABELS } from "../../../helpers/toolsHelper";
 import type { CashFlow } from "../api/cashFlowApi";
 import { useCashFlowsStore } from "../states/cashFlowsStore";
-import {
-  showSuccessDialog,
-  showErrorDialog,
-} from "../../../helpers/toolsHelper";
 
-const props = defineProps<{
-  isOpen: boolean;
-  cashFlow: CashFlow | null;
-  labels: string[];
-}>();
-
-const emit = defineEmits<{
-  (e: "close"): void;
-  (e: "success"): void;
-}>();
+const props = defineProps<{ cashFlow: CashFlow }>();
+const emit = defineEmits<{ (e: "close"): void; (e: "saved"): void }>();
 
 const store = useCashFlowsStore();
 
 const form = reactive({
-  type: "inflow" as "inflow" | "outflow",
-  source: "cash" as "cash" | "savings" | "loans",
-  label: "",
-  nominal: 0,
-  description: "",
+  type: props.cashFlow.type,
+  source: props.cashFlow.source,
+  label: props.cashFlow.label,
+  nominal: props.cashFlow.nominal as number | "",
+  description: props.cashFlow.description,
 });
+const error = ref("");
 
-watch(
-  () => props.cashFlow,
-  (cf) => {
-    if (cf) {
-      form.type = cf.type;
-      form.source = cf.source;
-      form.label = cf.label;
-      form.nominal = cf.nominal;
-      form.description = cf.description;
-    }
-  },
-  { immediate: true }
-);
+async function onSubmit() {
+  const nominal = Number(form.nominal);
+  if (!form.label.trim()) {
+    error.value = "Label wajib diisi.";
+    return;
+  }
+  if (!(nominal > 0)) {
+    error.value = "Nominal harus lebih dari 0.";
+    return;
+  }
+  error.value = "";
 
-async function handleSubmit() {
-  if (!props.cashFlow) return;
-  try {
-    await store.updateCashFlow(props.cashFlow.id, { ...form });
-    await showSuccessDialog("Arus kas berhasil diperbarui!");
-    emit("success");
-    emit("close");
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Gagal memperbarui arus kas";
-    await showErrorDialog(message);
+  const success = await store.asyncChangeCashFlow(props.cashFlow.id, {
+    type: form.type,
+    source: form.source,
+    label: form.label.trim(),
+    nominal,
+    description: form.description,
+  });
+  if (success) {
+    emit("saved");
   }
 }
 </script>
 
-<style scoped>
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-  backdrop-filter: blur(4px);
-}
+<template>
+  <div
+    data-testid="change-modal"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+    @click.self="emit('close')">
+    <form class="w-full max-w-lg space-y-4 rounded-3xl bg-white p-6 shadow-2xl" @submit.prevent="onSubmit">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-extrabold">Ubah Transaksi</h2>
+        <button type="button" data-testid="change-close" aria-label="Tutup" @click="emit('close')">
+          <X class="h-5 w-5" />
+        </button>
+      </div>
 
-.modal-box {
-  background: white;
-  border-radius: 16px;
-  width: 100%;
-  max-width: 480px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
-  animation: slideUp 0.25s ease;
-}
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label for="change-type" class="mb-1 block text-xs font-bold uppercase text-slate-500">Jenis</label>
+          <select id="change-type" v-model="form.type" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+            <option v-for="(text, value) in TYPE_LABELS" :key="value" :value="value">{{ text }}</option>
+          </select>
+        </div>
+        <div>
+          <label for="change-source" class="mb-1 block text-xs font-bold uppercase text-slate-500">Sumber Dana</label>
+          <select id="change-source" v-model="form.source" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+            <option v-for="(text, value) in SOURCE_LABELS" :key="value" :value="value">{{ text }}</option>
+          </select>
+        </div>
+      </div>
 
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+      <div>
+        <label for="change-label" class="mb-1 block text-xs font-bold uppercase text-slate-500">Label</label>
+        <input
+          id="change-label"
+          v-model="form.label"
+          type="text"
+          list="change-label-options"
+          class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+        <datalist id="change-label-options">
+          <option v-for="label in store.labels" :key="label" :value="label" />
+        </datalist>
+      </div>
 
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
-}
+      <div>
+        <label for="change-nominal" class="mb-1 block text-xs font-bold uppercase text-slate-500">Nominal (Rp)</label>
+        <input
+          id="change-nominal"
+          v-model.number="form.nominal"
+          type="number"
+          min="1"
+          class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+      </div>
 
-.modal-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0;
-}
+      <div>
+        <label for="change-description" class="mb-1 block text-xs font-bold uppercase text-slate-500">Keterangan</label>
+        <textarea
+          id="change-description"
+          v-model="form.description"
+          rows="3"
+          class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+      </div>
 
-.modal-close {
-  background: none;
-  border: none;
-  color: #94a3b8;
-  cursor: pointer;
-  padding: 0.25rem;
-  border-radius: 6px;
-  transition: all 0.2s;
-}
+      <p v-if="error" data-testid="change-error" class="text-sm text-rose-700">{{ error }}</p>
 
-.modal-close:hover {
-  background: #f1f5f9;
-  color: #0f172a;
-}
-
-.modal-form {
-  padding: 1.25rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.form-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #374151;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.form-input,
-.form-select,
-.form-textarea {
-  width: 100%;
-  padding: 0.65rem 0.9rem;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-family: inherit;
-  color: #0f172a;
-  background: white;
-  transition: border-color 0.2s;
-  outline: none;
-}
-
-.form-input:focus,
-.form-select:focus,
-.form-textarea:focus {
-  border-color: #0ea5e9;
-}
-
-.form-textarea {
-  resize: none;
-}
-
-.radio-group {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.radio-card {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.65rem 0.8rem;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  color: #374151;
-  transition: all 0.2s;
-}
-
-.radio-card input {
-  display: none;
-}
-
-.radio-card.selected {
-  border-color: #0ea5e9;
-  background: #f0f9ff;
-  color: #0ea5e9;
-  font-weight: 600;
-}
-
-.radio-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.inflow-dot {
-  background: #10b981;
-}
-
-.outflow-dot {
-  background: #f43f5e;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  padding-top: 0.5rem;
-}
-
-.btn-cancel {
-  padding: 0.6rem 1.2rem;
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  color: #334155;
-  font-size: 0.875rem;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-cancel:hover {
-  background: #f1f5f9;
-}
-
-.btn-submit {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.6rem 1.5rem;
-  background: linear-gradient(135deg, #0ea5e9, #6366f1);
-  border: none;
-  border-radius: 8px;
-  color: white;
-  font-size: 0.875rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.btn-submit:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-</style>
+      <div class="flex justify-end gap-3">
+        <button type="button" data-testid="change-cancel" class="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600" @click="emit('close')">
+          Batal
+        </button>
+        <button
+          type="submit"
+          :disabled="store.isCashFlowChange"
+          class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
+          {{ store.isCashFlowChange ? "Menyimpan..." : "Simpan Perubahan" }}
+        </button>
+      </div>
+    </form>
+  </div>
+</template>

@@ -1,151 +1,99 @@
-// src/helpers/apiHelper.test.ts
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import {
-  getAccessToken,
-  putAccessToken,
-  removeAccessToken,
-  fetchAPI,
-  apiGet,
-  apiPost,
-  apiPut,
-  apiDelete,
-} from "./apiHelper";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { apiRequest, buildUrl, getAccessToken, putAccessToken } from "./apiHelper";
 
-// Mock global DELCOM_BASEURL
-Object.defineProperty(globalThis, "DELCOM_BASEURL", {
-  value: "https://open-api.delcom.org/api/v1",
-  writable: true,
+const fetchMock = vi.fn();
+
+beforeEach(() => {
+  fetchMock.mockReset();
+  vi.stubGlobal("fetch", fetchMock);
 });
 
-describe("getAccessToken", () => {
-  beforeEach(() => localStorage.clear());
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
-  it("returns null when no token", () => {
+describe("token storage", () => {
+  it("should store and read the access token", () => {
+    putAccessToken("abc");
+    expect(getAccessToken()).toBe("abc");
+  });
+
+  it("should remove the access token when value is empty", () => {
+    putAccessToken("abc");
+    putAccessToken(null);
     expect(getAccessToken()).toBeNull();
   });
+});
 
-  it("returns token after putting", () => {
-    putAccessToken("abc123");
-    expect(getAccessToken()).toBe("abc123");
+describe("buildUrl", () => {
+  it("should return url without query string by default", () => {
+    expect(buildUrl("/users")).toBe(`${DELCOM_BASEURL}/users`);
+  });
+
+  it("should skip empty query values and keep the rest", () => {
+    const url = buildUrl("/cash-flows", { type: "inflow", label: "", a: undefined, b: null, page: 0 });
+    expect(url).toBe(`${DELCOM_BASEURL}/cash-flows?type=inflow&page=0`);
+  });
+
+  it("should return url without query string when all values are empty", () => {
+    expect(buildUrl("/cash-flows", { label: "" })).toBe(`${DELCOM_BASEURL}/cash-flows`);
   });
 });
 
-describe("putAccessToken", () => {
-  it("stores token in localStorage", () => {
-    putAccessToken("mytoken");
-    expect(localStorage.getItem("accessToken")).toBe("mytoken");
-  });
-});
+describe("apiRequest", () => {
+  it("should send GET request with bearer token", async () => {
+    putAccessToken("token-1");
+    fetchMock.mockResolvedValue({ json: async () => ({ status: "success", message: "ok" }) });
 
-describe("removeAccessToken", () => {
-  it("removes token from localStorage", () => {
-    localStorage.setItem("accessToken", "token");
-    removeAccessToken();
-    expect(localStorage.getItem("accessToken")).toBeNull();
-  });
-});
+    const result = await apiRequest("/users");
 
-describe("fetchAPI", () => {
-  beforeEach(() => {
-    localStorage.clear();
-    vi.stubGlobal("fetch", vi.fn());
+    expect(result).toEqual({ status: "success", message: "ok" });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${DELCOM_BASEURL}/users`);
+    expect(init.method).toBe("GET");
+    expect(init.headers.Authorization).toBe("Bearer token-1");
+    expect(init.body).toBeUndefined();
   });
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
+  it("should not send Authorization header when there is no token", async () => {
+    fetchMock.mockResolvedValue({ json: async () => ({ status: "success", message: "ok" }) });
+    await apiRequest("/users");
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBeUndefined();
   });
 
-  it("returns data on success", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      json: async () => ({ status: "success", data: { id: 1 } }),
-    } as Response);
-
-    const result = await fetchAPI("/test", { useAuth: false });
-    expect(result).toEqual({ id: 1 });
+  it("should not send Authorization header when auth is false", async () => {
+    putAccessToken("token-1");
+    fetchMock.mockResolvedValue({ json: async () => ({ status: "success", message: "ok" }) });
+    await apiRequest("/auth/login", { auth: false });
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBeUndefined();
   });
 
-  it("throws error on fail status", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      json: async () => ({ status: "fail", message: "Tidak valid" }),
-    } as Response);
+  it("should serialize json body and send content type", async () => {
+    fetchMock.mockResolvedValue({ json: async () => ({ status: "success", message: "ok" }) });
+    await apiRequest("/cash-flows", { method: "POST", body: { label: "gaji" }, query: { x: 1 } });
 
-    await expect(fetchAPI("/test", { useAuth: false })).rejects.toThrow("Tidak valid");
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${DELCOM_BASEURL}/cash-flows?x=1`);
+    expect(init.method).toBe("POST");
+    expect(init.headers["Content-Type"]).toBe("application/json");
+    expect(init.body).toBe(JSON.stringify({ label: "gaji" }));
   });
 
-  it("throws error with default message on fail status when message is omitted", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      json: async () => ({ status: "fail" }),
-    } as Response);
-
-    await expect(fetchAPI("/test", { useAuth: false })).rejects.toThrow("Terjadi kesalahan pada server");
-  });
-
-  it("includes Bearer token when token exists", async () => {
-    putAccessToken("mytoken");
-    vi.mocked(fetch).mockResolvedValueOnce({
-      json: async () => ({ status: "success", data: {} }),
-    } as Response);
-
-    await fetchAPI("/test");
-    const call = vi.mocked(fetch).mock.calls[0];
-    expect((call?.[1] as RequestInit | undefined)?.headers).toMatchObject({
-      Authorization: "Bearer mytoken",
-    });
-  });
-
-  it("sends FormData without Content-Type header", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      json: async () => ({ status: "success", data: {} }),
-    } as Response);
-
+  it("should pass FormData as is without content type", async () => {
+    fetchMock.mockResolvedValue({ json: async () => ({ status: "success", message: "ok" }) });
     const formData = new FormData();
-    await fetchAPI("/upload", {
-      method: "POST",
-      body: formData,
-      isFormData: true,
-      useAuth: false,
-    });
+    formData.append("photo", new File(["x"], "a.png"));
 
-    const headers = (vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit | undefined)
-      ?.headers as Record<string, string>;
-    expect(headers["Content-Type"]).toBeUndefined();
-  });
-});
+    await apiRequest("/users/me/photo", { method: "POST", body: formData });
 
-describe("convenience wrappers", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
-    localStorage.clear();
-  });
-  afterEach(() => vi.unstubAllGlobals());
-
-  const mockSuccess = (data: unknown) => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      json: async () => ({ status: "success", data }),
-    } as Response);
-  };
-
-  it("apiGet calls GET", async () => {
-    mockSuccess({ items: [] });
-    await apiGet("/items");
-    expect(vi.mocked(fetch).mock.calls[0]?.[1]).toMatchObject({ method: "GET" });
+    const init = fetchMock.mock.calls[0][1];
+    expect(init.body).toBe(formData);
+    expect(init.headers["Content-Type"]).toBeUndefined();
   });
 
-  it("apiPost calls POST with body", async () => {
-    mockSuccess({ id: 1 });
-    await apiPost("/items", { name: "test" });
-    expect(vi.mocked(fetch).mock.calls[0]?.[1]).toMatchObject({ method: "POST" });
-  });
-
-  it("apiPut calls PUT", async () => {
-    mockSuccess({});
-    await apiPut("/items/1", { name: "updated" });
-    expect(vi.mocked(fetch).mock.calls[0]?.[1]).toMatchObject({ method: "PUT" });
-  });
-
-  it("apiDelete calls DELETE", async () => {
-    mockSuccess({});
-    await apiDelete("/items/1");
-    expect(vi.mocked(fetch).mock.calls[0]?.[1]).toMatchObject({ method: "DELETE" });
+  it("should return error result when fetch fails", async () => {
+    fetchMock.mockRejectedValue(new Error("Network down"));
+    const result = await apiRequest("/users");
+    expect(result).toEqual({ status: "error", message: "Network down" });
   });
 });

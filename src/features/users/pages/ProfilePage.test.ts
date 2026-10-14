@@ -1,181 +1,150 @@
-// src/features/users/pages/ProfilePage.test.ts
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises } from "@vue/test-utils";
-import { fireEvent } from "@testing-library/vue";
+import { showErrorDialog } from "../../../helpers/toolsHelper";
 import { renderWithProviders } from "../../../test-utils";
-import ProfilePage from "./ProfilePage.vue";
 import { useUsersStore } from "../states/usersStore";
-import { showSuccessDialog, showErrorDialog } from "../../../helpers/toolsHelper";
+import ProfilePage from "./ProfilePage.vue";
 
-vi.mock("../../../helpers/toolsHelper", () => ({
-  showSuccessDialog: vi.fn().mockResolvedValue(undefined),
-  showErrorDialog: vi.fn().mockResolvedValue(undefined),
-}));
+vi.mock("../../../helpers/toolsHelper", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../helpers/toolsHelper")>();
+  return { ...actual, showErrorDialog: vi.fn(), showSuccessDialog: vi.fn() };
+});
 
-Object.defineProperty(globalThis, "DELCOM_BASEURL", {
-  value: "https://open-api.delcom.org/api/v1",
-  writable: true,
+const profile = { id: 1, name: "Delcom", email: "a@b.c", photo: "http://x.test/me.png" };
+
+interface Results {
+  photo?: boolean;
+  password?: boolean;
+}
+
+function setup(results: Results = {}) {
+  return renderWithProviders(ProfilePage, {
+    beforeMount: (pinia) => {
+      const store = useUsersStore(pinia);
+      vi.spyOn(store, "asyncGetProfile").mockResolvedValue(true);
+      vi.spyOn(store, "asyncChangeProfile").mockResolvedValue(true);
+      vi.spyOn(store, "asyncChangePhoto").mockResolvedValue(results.photo ?? true);
+      vi.spyOn(store, "asyncChangePassword").mockResolvedValue(results.password ?? true);
+    },
+  });
+}
+
+async function selectPhoto(wrapper: any, file: File) {
+  const input = wrapper.find('[data-testid="photo-input"]');
+  Object.defineProperty(input.element, "files", { value: [file], configurable: true });
+  await input.trigger("change");
+}
+
+async function fillPassword(wrapper: any, current: string, next: string, confirm: string) {
+  await wrapper.find('[data-testid="password-current"]').setValue(current);
+  await wrapper.find('[data-testid="password-new"]').setValue(next);
+  await wrapper.find('[data-testid="password-confirm"]').setValue(confirm);
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
 });
 
 describe("ProfilePage", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
-    vi.clearAllMocks();
-    localStorage.setItem("accessToken", "token");
-    vi.mocked(fetch).mockResolvedValue({
-      json: async () => ({
-        status: "success",
-        data: {
-          user: { id: 1, name: "Test User", email: "test@example.com", photo: "https://example.com/avatar.png", created_at: "", updated_at: "" },
-        },
-      }),
-    } as Response);
-  });
-  afterEach(() => vi.unstubAllGlobals());
+  it("should load profile on mount and fill the form when profile arrives", async () => {
+    const { wrapper, pinia } = await setup();
+    expect(useUsersStore(pinia).asyncGetProfile).toHaveBeenCalledTimes(1);
 
-  it("renders page title and profile data", async () => {
-    const { getByText } = renderWithProviders(ProfilePage);
+    useUsersStore(pinia).profile = profile;
     await flushPromises();
-    expect(getByText("Profil Saya")).toBeTruthy();
-    expect(getByText("Test User")).toBeTruthy();
-    expect(getByText("test@example.com")).toBeTruthy();
+
+    expect((wrapper.find("#profile-name").element as HTMLInputElement).value).toBe("Delcom");
+    expect((wrapper.find("#profile-email").element as HTMLInputElement).value).toBe("a@b.c");
   });
 
-  it("handles avatar image error fallback", async () => {
-    const { container } = renderWithProviders(ProfilePage);
+  it("should render photo, fallback without photo, and fallback without profile", async () => {
+    const { wrapper, pinia } = await setup();
+    expect(wrapper.find("img").exists()).toBe(false);
+
+    useUsersStore(pinia).profile = { ...profile, photo: null };
     await flushPromises();
-    const img = container.querySelector(".avatar-img") as HTMLImageElement;
-    expect(img).toBeTruthy();
-    if (img) {
-      await fireEvent.error(img);
-      expect(img.src).toContain("ui-avatars.com");
-    }
+    expect(wrapper.find("img").exists()).toBe(false);
+
+    useUsersStore(pinia).profile = profile;
+    await flushPromises();
+    expect(wrapper.find("img").attributes("src")).toBe("http://x.test/me.png");
   });
 
-  it("handles photo upload: no file, success, and error paths", async () => {
-    const { container } = renderWithProviders(ProfilePage);
-    await flushPromises();
-    const store = useUsersStore();
-    const fileInput = container.querySelector("#photo-input") as HTMLInputElement;
-
-    // 1. No file selected
-    await fireEvent.change(fileInput, { target: { files: [] } });
+  it("should submit edited profile", async () => {
+    const { wrapper, pinia } = await setup();
+    useUsersStore(pinia).profile = profile;
     await flushPromises();
 
-    // 2. File upload success
-    const uploadSpy = vi.spyOn(store, "uploadPhoto").mockResolvedValueOnce(undefined as never);
-    const mockFile = new File(["test"], "photo.png", { type: "image/png" });
-    await fireEvent.change(fileInput, { target: { files: [mockFile] } });
-    await flushPromises();
-    expect(uploadSpy).toHaveBeenCalledWith(mockFile);
-    expect(showSuccessDialog).toHaveBeenCalledWith("Foto profil berhasil diperbarui!");
+    await wrapper.find("#profile-name").setValue("Baru");
+    await wrapper.find("#profile-email").setValue("baru@b.c");
+    await wrapper.find('[data-testid="profile-form"]').trigger("submit");
 
-    // 3. File upload error with Error instance
-    vi.spyOn(store, "uploadPhoto").mockRejectedValueOnce(new Error("File terlalu besar"));
-    await fireEvent.change(fileInput, { target: { files: [mockFile] } });
-    await flushPromises();
-    expect(showErrorDialog).toHaveBeenCalledWith("File terlalu besar");
-
-    // 4. File upload error with non-Error
-    vi.spyOn(store, "uploadPhoto").mockRejectedValueOnce("Str error");
-    await fireEvent.change(fileInput, { target: { files: [mockFile] } });
-    await flushPromises();
-    expect(showErrorDialog).toHaveBeenCalledWith("Gagal upload foto");
+    expect(useUsersStore(pinia).asyncChangeProfile).toHaveBeenCalledWith({ name: "Baru", email: "baru@b.c" });
   });
 
-  it("handles update profile: success and error paths", async () => {
-    const { container } = renderWithProviders(ProfilePage);
-    await flushPromises();
-    const store = useUsersStore();
+  it("should keep photo button disabled until a file is chosen", async () => {
+    const { wrapper } = await setup();
+    const button = wrapper.find('[data-testid="photo-form"] button[type="submit"]');
+    expect(button.attributes("disabled")).toBeDefined();
 
-    // 1. Success
-    const updateSpy = vi.spyOn(store, "updateProfile").mockResolvedValueOnce(undefined as never);
-    const nameInput = container.querySelector("#profile-name") as HTMLInputElement;
-    const emailInput = container.querySelector("#profile-email") as HTMLInputElement;
-    await fireEvent.update(nameInput, "New Name");
-    await fireEvent.update(emailInput, "new@example.com");
-
-    const updateForm = container.querySelector("#update-profile-form") as HTMLFormElement;
-    await fireEvent.submit(updateForm);
-    await flushPromises();
-
-    expect(updateSpy).toHaveBeenCalledWith("New Name", "new@example.com");
-    expect(showSuccessDialog).toHaveBeenCalledWith("Profil berhasil diperbarui!");
-
-    // 2. Error with Error instance
-    vi.spyOn(store, "updateProfile").mockRejectedValueOnce(new Error("Update fail"));
-    await fireEvent.submit(updateForm);
-    await flushPromises();
-    expect(showErrorDialog).toHaveBeenCalledWith("Update fail");
-
-    // 3. Error with non-Error
-    vi.spyOn(store, "updateProfile").mockRejectedValueOnce("Update str fail");
-    await fireEvent.submit(updateForm);
-    await flushPromises();
-    expect(showErrorDialog).toHaveBeenCalledWith("Gagal memperbarui profil");
+    await selectPhoto(wrapper, new File(["x"], "a.png"));
+    expect(button.attributes("disabled")).toBeUndefined();
   });
 
-  it("handles change password: mismatch, success, and error paths", async () => {
-    const { container } = renderWithProviders(ProfilePage);
+  it("should upload photo, reset selection and reload profile on success", async () => {
+    const { wrapper, pinia } = await setup();
+    const file = new File(["x"], "a.png");
+    await selectPhoto(wrapper, file);
+    await wrapper.find('[data-testid="photo-form"]').trigger("submit");
     await flushPromises();
-    const store = useUsersStore();
 
-    const currentInput = container.querySelector("#current-password") as HTMLInputElement;
-    const newInput = container.querySelector("#new-password") as HTMLInputElement;
-    const confirmInput = container.querySelector("#confirm-password") as HTMLInputElement;
-    const passwordForm = container.querySelector("#change-password-form") as HTMLFormElement;
-
-    // 1. Password mismatch
-    await fireEvent.update(currentInput, "oldpass");
-    await fireEvent.update(newInput, "newpass123");
-    await fireEvent.update(confirmInput, "different123");
-    await fireEvent.submit(passwordForm);
-    await flushPromises();
-    expect(showErrorDialog).toHaveBeenCalledWith("Konfirmasi password tidak cocok!");
-
-    // 2. Password success
-    const changePassSpy = vi.spyOn(store, "changePassword").mockResolvedValueOnce(undefined as never);
-    await fireEvent.update(confirmInput, "newpass123");
-    await fireEvent.submit(passwordForm);
-    await flushPromises();
-    expect(changePassSpy).toHaveBeenCalledWith("oldpass", "newpass123", "newpass123");
-    expect(showSuccessDialog).toHaveBeenCalledWith("Password berhasil diubah!");
-    expect(currentInput.value).toBe("");
-    expect(newInput.value).toBe("");
-    expect(confirmInput.value).toBe("");
-
-    // 3. Error with Error instance
-    await fireEvent.update(currentInput, "oldpass");
-    await fireEvent.update(newInput, "newpass123");
-    await fireEvent.update(confirmInput, "newpass123");
-    vi.spyOn(store, "changePassword").mockRejectedValueOnce(new Error("Password salah"));
-    await fireEvent.submit(passwordForm);
-    await flushPromises();
-    expect(showErrorDialog).toHaveBeenCalledWith("Password salah");
-
-    // 4. Error with non-Error
-    vi.spyOn(store, "changePassword").mockRejectedValueOnce("Error str");
-    await fireEvent.submit(passwordForm);
-    await flushPromises();
-    expect(showErrorDialog).toHaveBeenCalledWith("Gagal mengubah password");
+    const store = useUsersStore(pinia);
+    expect(store.asyncChangePhoto).toHaveBeenCalledWith(file);
+    expect(store.asyncGetProfile).toHaveBeenCalledTimes(2);
+    expect(wrapper.find('[data-testid="photo-form"] button[type="submit"]').attributes("disabled")).toBeDefined();
   });
 
-  it("renders loading spinners when store.isLoading is true", async () => {
-    renderWithProviders(ProfilePage);
+  it("should not reload profile when photo upload fails", async () => {
+    const { wrapper, pinia } = await setup({ photo: false });
+    await selectPhoto(wrapper, new File(["x"], "a.png"));
+    await wrapper.find('[data-testid="photo-form"]').trigger("submit");
     await flushPromises();
-    const store = useUsersStore();
-    store.isLoading = true;
-    await flushPromises();
-    expect(document.querySelectorAll(".spinner").length).toBeGreaterThanOrEqual(1);
+
+    expect(useUsersStore(pinia).asyncGetProfile).toHaveBeenCalledTimes(1);
   });
 
-  it("falls back to initial U when profile has no name on avatar error", async () => {
-    const { container } = renderWithProviders(ProfilePage);
+  it("should reject password change when confirmation does not match", async () => {
+    const { wrapper, pinia } = await setup();
+    await fillPassword(wrapper, "lama", "baru1", "baru2");
+    await wrapper.find('[data-testid="password-form"]').trigger("submit");
     await flushPromises();
-    const store = useUsersStore();
-    const img = container.querySelector(".avatar-img") as HTMLImageElement;
-    store.profile = null;
-    await fireEvent.error(img);
-    expect(img.src).toContain("name=U");
+
+    expect(showErrorDialog).toHaveBeenCalledWith("Konfirmasi kata sandi baru tidak sesuai.");
+    expect(useUsersStore(pinia).asyncChangePassword).not.toHaveBeenCalled();
+  });
+
+  it("should change password and reset the fields on success", async () => {
+    const { wrapper, pinia } = await setup();
+    await fillPassword(wrapper, "lama", "baru1", "baru1");
+    await wrapper.find('[data-testid="password-form"]').trigger("submit");
+    await flushPromises();
+
+    expect(useUsersStore(pinia).asyncChangePassword).toHaveBeenCalledWith({
+      password: "lama",
+      new_password: "baru1",
+      new_password_confirmation: "baru1",
+    });
+    expect((wrapper.find('[data-testid="password-current"]').element as HTMLInputElement).value).toBe("");
+    expect((wrapper.find('[data-testid="password-new"]').element as HTMLInputElement).value).toBe("");
+    expect((wrapper.find('[data-testid="password-confirm"]').element as HTMLInputElement).value).toBe("");
+  });
+
+  it("should keep the fields when password change fails", async () => {
+    const { wrapper } = await setup({ password: false });
+    await fillPassword(wrapper, "lama", "baru1", "baru1");
+    await wrapper.find('[data-testid="password-form"]').trigger("submit");
+    await flushPromises();
+
+    expect((wrapper.find('[data-testid="password-current"]').element as HTMLInputElement).value).toBe("lama");
   });
 });

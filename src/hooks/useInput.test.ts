@@ -1,38 +1,19 @@
-// src/hooks/useInput.test.ts
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { useInput } from "./useInput";
 
 describe("useInput", () => {
-  it("initializes with provided value", () => {
-    const { value } = useInput("hello");
-    expect(value.value).toBe("hello");
+  it("should update value on change event", () => {
+    const [value, onChange] = useInput("awal");
+    expect(value.value).toBe("awal");
+
+    onChange({ target: { value: "baru" } } as unknown as Event);
+    expect(value.value).toBe("baru");
   });
 
-  it("onValueChange updates the value", () => {
-    const { value, onValueChange } = useInput("");
-    onValueChange("new value");
-    expect(value.value).toBe("new value");
-  });
-
-  it("reset restores the initial value", () => {
-    const { value, onValueChange, reset } = useInput("initial");
-    onValueChange("changed");
-    expect(value.value).toBe("changed");
+  it("should reset to initial value and default to empty string", () => {
+    const [value, onChange, reset] = useInput();
+    onChange({ target: { value: "x" } } as unknown as Event);
     reset();
-    expect(value.value).toBe("initial");
-  });
-
-  it("works with numbers", () => {
-    const { value, onValueChange } = useInput(0);
-    onValueChange(42);
-    expect(value.value).toBe(42);
-  });
-
-  it("works with booleans", () => {
-    const { value, onValueChange, reset } = useInput(false);
-    onValueChange(true);
-    expect(value.value).toBe(true);
-    reset();
-    expect(value.value).toBe(false);
+    expect(value.value).toBe("");
   });
 });

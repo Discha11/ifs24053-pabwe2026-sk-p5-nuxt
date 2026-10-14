@@ -1,0 +1,11 @@
+# Temuan tanpa versi perbaikan (GitHub Advisory: "Patched versions: None").
+# Keduanya transitif via nuxt > @nuxt/nitro-server > nitropack.
+# Masa berlaku (exp) dipasang agar ditinjau ulang; cek `bun audit` / update nuxt sebelum tanggal ini.
+
+# braces <=3.0.3 - DoS stack-exhaustion pada pola bersarang (via micromatch)
+CVE-2026-93687 exp:2026-12-31
+GHSA-vfj7-8cjw-p6xm exp:2026-12-31
+
+# node-forge <=1.4.0 - verifikasi tanda tangan RSA PKCS#1 v1.5 (via listhen, hanya sertifikat dev HTTPS)
+CVE-2026-85393 exp:2026-12-31
+GHSA-86w9-cpqp-85rv exp:2026-12-31

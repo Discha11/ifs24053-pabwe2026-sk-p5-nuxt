@@ -1,44 +1,25 @@
-// src/features/auth/layouts/AuthLayout.test.ts
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, expect, it } from "vitest";
+import { flushPromises } from "@vue/test-utils";
+import { putAccessToken } from "../../../helpers/apiHelper";
 import { renderWithProviders } from "../../../test-utils";
 import AuthLayout from "./AuthLayout.vue";
 
-const mockReplace = vi.fn();
-vi.mock("vue-router", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("vue-router")>();
-  return {
-    ...actual,
-    useRouter: () => ({ replace: mockReplace }),
-  };
-});
-
 describe("AuthLayout", () => {
-  beforeEach(() => {
-    localStorage.clear();
-    mockReplace.mockClear();
+  it("should render branding and login/register tabs", async () => {
+    const { wrapper, router } = await renderWithProviders(AuthLayout, { route: "/auth/login" });
+
+    expect(wrapper.text()).toContain("Delcom Cash Flow");
+    expect(wrapper.find('[data-testid="tab-login"]').attributes("href")).toBe("/auth/login");
+    expect(wrapper.find('[data-testid="tab-register"]').attributes("href")).toBe("/auth/register");
+    expect(wrapper.find('[data-testid="route-stub"]').exists()).toBe(true);
+    expect(router.currentRoute.value.fullPath).toBe("/auth/login");
   });
 
-  it("renders slot content", () => {
-    const { getByText } = renderWithProviders(AuthLayout, {
-      slots: { default: "<p>Slot content</p>" },
-    });
-    expect(getByText("Slot content")).toBeTruthy();
-    expect(mockReplace).not.toHaveBeenCalled();
-  });
+  it("should redirect to home when user is already authenticated", async () => {
+    putAccessToken("token-1");
+    const { router } = await renderWithProviders(AuthLayout, { route: "/auth/login" });
+    await flushPromises();
 
-  it("redirects to / when user already has access token", () => {
-    localStorage.setItem("accessToken", "token123");
-    renderWithProviders(AuthLayout);
-    expect(mockReplace).toHaveBeenCalledWith("/");
-  });
-
-  it("renders brand name", () => {
-    const { getByText } = renderWithProviders(AuthLayout);
-    expect(getByText("Delcom Todo")).toBeTruthy();
-  });
-
-  it("renders footer text", () => {
-    const { container } = renderWithProviders(AuthLayout);
-    expect(container.innerHTML).toContain("Delcom");
+    expect(router.currentRoute.value.fullPath).toBe("/");
   });
 });

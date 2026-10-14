@@ -1,48 +1,36 @@
+<script setup lang="ts">
+import { onMounted, ref } from "vue";
+import { RouterView, useRouter } from "vue-router";
+import { useAuthStore } from "../../auth/states/authStore";
+import { useUsersStore } from "../../users/states/usersStore";
+import NavbarComponent from "../components/NavbarComponent.vue";
+import SidebarComponent from "../components/SidebarComponent.vue";
+
+const router = useRouter();
+const authStore = useAuthStore();
+const usersStore = useUsersStore();
+
+const isSidebarOpen = ref(false);
+
+onMounted(() => {
+  // Rute terproteksi: wajib login
+  if (!authStore.isAuthenticated) {
+    router.replace("/auth/login");
+    return;
+  }
+  usersStore.asyncGetProfile();
+});
+</script>
+
 <template>
-  <div class="cashflow-layout">
-    <NavbarComponent />
-    <div class="layout-body">
-      <SidebarComponent />
-      <main class="layout-content">
-        <RouterView />
+  <div class="min-h-screen bg-slate-50">
+    <NavbarComponent @toggle-sidebar="isSidebarOpen = !isSidebarOpen" />
+    <div class="mx-auto flex max-w-7xl gap-6 px-4 py-6">
+      <SidebarComponent :open="isSidebarOpen" @close="isSidebarOpen = false" />
+      <main class="min-w-0 flex-1">
+        <!-- Halaman anak hanya dirender setelah login, agar tidak memanggil API tanpa token -->
+        <RouterView v-if="authStore.isAuthenticated" />
       </main>
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { onMounted } from "vue";
-import { useRouter } from "vue-router";
-import NavbarComponent from "../components/NavbarComponent.vue";
-import SidebarComponent from "../components/SidebarComponent.vue";
-import { getAccessToken } from "../../../helpers/apiHelper";
-
-const router = useRouter();
-
-onMounted(() => {
-  if (!getAccessToken()) {
-    router.replace("/auth/login");
-  }
-});
-</script>
-
-<style scoped>
-.cashflow-layout {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: #f8fafc;
-}
-
-.layout-body {
-  display: flex;
-  flex: 1;
-}
-
-.layout-content {
-  flex: 1;
-  padding: 1.5rem;
-  overflow-x: hidden;
-  min-width: 0;
-}
-</style>

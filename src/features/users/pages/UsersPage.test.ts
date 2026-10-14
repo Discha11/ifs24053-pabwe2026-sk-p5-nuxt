@@ -1,46 +1,50 @@
-// src/features/users/pages/UsersPage.test.ts
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { fireEvent } from "@testing-library/vue";
+import { describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "../../../test-utils";
+import { useUsersStore } from "../states/usersStore";
 import UsersPage from "./UsersPage.vue";
 
-vi.mock("../../../helpers/toolsHelper", () => ({
-  formatDate: (d: string) => d,
-}));
-
-Object.defineProperty(globalThis, "DELCOM_BASEURL", {
-  value: "https://open-api.delcom.org/api/v1",
-  writable: true,
-});
+function setup(prepare?: (store: ReturnType<typeof useUsersStore>) => void) {
+  return renderWithProviders(UsersPage, {
+    beforeMount: (pinia) => {
+      const store = useUsersStore(pinia);
+      vi.spyOn(store, "asyncGetUsers").mockResolvedValue(true);
+      prepare?.(store);
+    },
+  });
+}
 
 describe("UsersPage", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
-    localStorage.setItem("accessToken", "token");
-    vi.mocked(fetch).mockResolvedValue({
-      json: async () => ({
-        status: "success",
-        data: {
-          users: [
-            { id: 1, name: "Test User", email: "test@test.com", photo: "https://example.com/photo.png", created_at: "", updated_at: "" },
-          ],
-        },
-      }),
-    } as Response);
-  });
-  afterEach(() => vi.unstubAllGlobals());
-
-  it("renders page title and subtitle", () => {
-    const { getByText } = renderWithProviders(UsersPage);
-    expect(getByText("Direktori Pengguna")).toBeTruthy();
-    expect(getByText("Seluruh pengguna yang terdaftar dalam sistem")).toBeTruthy();
+  it("should fetch users on mount", async () => {
+    const { pinia } = await setup();
+    expect(useUsersStore(pinia).asyncGetUsers).toHaveBeenCalledTimes(1);
   });
 
-  it("handles avatar image error and falls back to ui-avatars", async () => {
-    const { findByAltText } = renderWithProviders(UsersPage);
-    const img = await findByAltText("Test User") as HTMLImageElement;
-    expect(img).toBeTruthy();
-    await fireEvent.error(img);
-    expect(img.src).toContain("ui-avatars.com");
+  it("should show empty state when there are no users", async () => {
+    const { wrapper } = await setup();
+    expect(wrapper.find('[data-testid="users-empty"]').exists()).toBe(true);
+  });
+
+  it("should show loading state", async () => {
+    const { wrapper } = await setup((store) => {
+      store.isUsers = true;
+    });
+    expect(wrapper.find('[data-testid="users-loading"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="users-empty"]').exists()).toBe(false);
+  });
+
+  it("should render users with photo or fallback avatar", async () => {
+    const { wrapper } = await setup((store) => {
+      store.users = [
+        { id: 1, name: "Ada", email: "ada@x.id", photo: "http://x.test/ada.png" },
+        { id: 2, name: "Budi", email: "budi@x.id", photo: null },
+      ];
+    });
+
+    const items = wrapper.findAll("li");
+    expect(items).toHaveLength(2);
+    expect(items[0].text()).toContain("Ada");
+    expect(items[0].find("img").attributes("src")).toBe("http://x.test/ada.png");
+    expect(items[1].text()).toContain("budi@x.id");
+    expect(items[1].find("img").exists()).toBe(false);
   });
 });

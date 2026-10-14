@@ -1,92 +1,71 @@
-// src/helpers/toolsHelper.test.ts
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import Swal from "sweetalert2";
 import {
-  formatRupiah,
   formatDate,
-  formatDateTime,
-  showSuccessDialog,
-  showErrorDialog,
+  formatRupiah,
+  resolvePhotoUrl,
   showConfirmDialog,
+  showErrorDialog,
+  showSuccessDialog,
 } from "./toolsHelper";
 
-vi.mock("sweetalert2", () => ({
-  default: {
-    fire: vi.fn(),
-  },
-}));
+vi.mock("sweetalert2", () => ({ default: { fire: vi.fn() } }));
 
-import Swal from "sweetalert2";
+const fire = Swal.fire as unknown as ReturnType<typeof vi.fn>;
 
-describe("formatRupiah", () => {
-  it("formats number to Rupiah", () => {
-    const result = formatRupiah(1000000);
-    expect(result).toContain("Rp");
-    expect(result).toContain("1.000.000");
-  });
-
-  it("formats zero", () => {
-    expect(formatRupiah(0)).toContain("0");
-  });
-
-  it("formats large numbers", () => {
-    const result = formatRupiah(2500000);
-    expect(result).toContain("2.500.000");
-  });
+beforeEach(() => {
+  fire.mockReset();
 });
 
-describe("formatDate", () => {
-  it("formats a valid date string", () => {
-    const result = formatDate("2024-10-05T00:00:00Z");
-    expect(result).toContain("2024");
-    expect(result).toContain("Oktober");
+describe("dialogs", () => {
+  it("should show success dialog", async () => {
+    fire.mockResolvedValue({});
+    await showSuccessDialog("Tersimpan");
+    expect(fire).toHaveBeenCalledWith(expect.objectContaining({ icon: "success", text: "Tersimpan" }));
   });
 
-  it("returns dash for empty string", () => {
-    expect(formatDate("")).toBe("-");
-  });
-});
-
-describe("formatDateTime", () => {
-  it("formats datetime string", () => {
-    const result = formatDateTime("2024-10-05T12:00:00Z");
-    expect(result).toContain("2024");
-  });
-
-  it("returns dash for empty string", () => {
-    expect(formatDateTime("")).toBe("-");
-  });
-});
-
-describe("showSuccessDialog", () => {
-  it("calls Swal.fire with success icon", async () => {
-    vi.mocked(Swal.fire).mockResolvedValueOnce({} as never);
-    await showSuccessDialog("Berhasil!");
-    expect(Swal.fire).toHaveBeenCalledWith(
-      expect.objectContaining({ icon: "success", text: "Berhasil!" })
-    );
-  });
-});
-
-describe("showErrorDialog", () => {
-  it("calls Swal.fire with error icon", async () => {
-    vi.mocked(Swal.fire).mockResolvedValueOnce({} as never);
+  it("should show error dialog", async () => {
+    fire.mockResolvedValue({});
     await showErrorDialog("Gagal!");
-    expect(Swal.fire).toHaveBeenCalledWith(
-      expect.objectContaining({ icon: "error", text: "Gagal!" })
-    );
+    expect(fire).toHaveBeenCalledWith(expect.objectContaining({ icon: "error", text: "Gagal!" }));
+  });
+
+  it("should resolve true when confirm dialog is confirmed", async () => {
+    fire.mockResolvedValue({ isConfirmed: true });
+    await expect(showConfirmDialog("Hapus?", "Yakin?")).resolves.toBe(true);
+    expect(fire).toHaveBeenCalledWith(expect.objectContaining({ icon: "warning", title: "Hapus?", text: "Yakin?" }));
+  });
+
+  it("should resolve false when confirm dialog is cancelled", async () => {
+    fire.mockResolvedValue({ isConfirmed: false });
+    await expect(showConfirmDialog("Hapus?", "Yakin?")).resolves.toBe(false);
   });
 });
 
-describe("showConfirmDialog", () => {
-  it("returns true when confirmed", async () => {
-    vi.mocked(Swal.fire).mockResolvedValueOnce({ isConfirmed: true } as never);
-    const result = await showConfirmDialog("Hapus?", "Yakin?");
-    expect(result).toBe(true);
+describe("formatters", () => {
+  it("should format number as rupiah", () => {
+    const text = formatRupiah(2500000).replace(/\s/g, " ");
+    expect(text).toContain("Rp");
+    expect(text).toContain("2.500.000");
   });
 
-  it("returns false when cancelled", async () => {
-    vi.mocked(Swal.fire).mockResolvedValueOnce({ isConfirmed: false } as never);
-    const result = await showConfirmDialog("Hapus?", "Yakin?");
-    expect(result).toBe(false);
+  it("should format date string", () => {
+    const text = formatDate("2024-10-05T12:09:16.000000Z");
+    expect(text).toContain("2024");
+  });
+});
+
+describe("resolvePhotoUrl", () => {
+  it("should return empty string when photo is empty", () => {
+    expect(resolvePhotoUrl(null)).toBe("");
+    expect(resolvePhotoUrl(undefined)).toBe("");
+  });
+
+  it("should keep absolute url", () => {
+    expect(resolvePhotoUrl("http://x.test/a.png")).toBe("http://x.test/a.png");
+  });
+
+  it("should prefix relative path with api origin", () => {
+    expect(resolvePhotoUrl("img/profile/1.png")).toBe(`${DELCOM_ORIGIN}/img/profile/1.png`);
   });
 });

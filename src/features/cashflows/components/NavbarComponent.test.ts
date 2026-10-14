@@ -1,101 +1,78 @@
-// src/features/cashflows/components/NavbarComponent.test.ts
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent } from "@testing-library/vue";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises } from "@vue/test-utils";
+import { showConfirmDialog } from "../../../helpers/toolsHelper";
 import { renderWithProviders } from "../../../test-utils";
-import NavbarComponent from "./NavbarComponent.vue";
 import { useAuthStore } from "../../auth/states/authStore";
 import { useUsersStore } from "../../users/states/usersStore";
-import { showConfirmDialog, showSuccessDialog } from "../../../helpers/toolsHelper";
+import NavbarComponent from "./NavbarComponent.vue";
 
-const mockPush = vi.fn();
-vi.mock("vue-router", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("vue-router")>();
-  return {
-    ...actual,
-    useRouter: () => ({ push: mockPush, replace: vi.fn() }),
-  };
+vi.mock("../../../helpers/toolsHelper", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../helpers/toolsHelper")>();
+  return { ...actual, showConfirmDialog: vi.fn() };
 });
 
-vi.mock("../../../helpers/toolsHelper", () => ({
-  showConfirmDialog: vi.fn(),
-  showSuccessDialog: vi.fn().mockResolvedValue(undefined),
-}));
+function setup() {
+  return renderWithProviders(NavbarComponent, {
+    route: "/",
+    beforeMount: (pinia) => {
+      vi.spyOn(useAuthStore(pinia), "asyncSetIsAuthLogout").mockResolvedValue();
+    },
+  });
+}
 
-Object.defineProperty(globalThis, "DELCOM_BASEURL", {
-  value: "https://open-api.delcom.org/api/v1",
-  writable: true,
+beforeEach(() => {
+  vi.clearAllMocks();
 });
 
 describe("NavbarComponent", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
-    mockPush.mockClear();
-    vi.clearAllMocks();
-    localStorage.setItem("accessToken", "token");
-    vi.mocked(fetch).mockResolvedValue({
-      json: async () => ({
-        status: "success",
-        data: { user: { id: 1, name: "Test User", email: "t@t.com", photo: "https://example.com/avatar.png", created_at: "", updated_at: "" } },
-      }),
-    } as Response);
-  });
-
-  it("renders app name", () => {
-    const { getByText } = renderWithProviders(NavbarComponent);
-    expect(getByText("Delcom Todo")).toBeTruthy();
-  });
-
-  it("renders logout button", () => {
-    const { getByText } = renderWithProviders(NavbarComponent);
-    expect(getByText("Keluar")).toBeTruthy();
-  });
-
-  it("renders Online badge", () => {
-    const { getByText } = renderWithProviders(NavbarComponent);
-    expect(getByText("Online")).toBeTruthy();
-  });
-
-  it("sets fallback avatar when image load fails", async () => {
-    const { findByAltText } = renderWithProviders(NavbarComponent);
-    const img = await findByAltText("Test User") as HTMLImageElement;
-    await fireEvent.error(img);
-    expect(img.src).toContain("ui-avatars.com");
-  });
-
-  it("uses U as fallback avatar letter when profile name is undefined", async () => {
-    const { findByAltText } = renderWithProviders(NavbarComponent);
-    const usersStore = useUsersStore();
-    const img = (await findByAltText("Test User")) as HTMLImageElement;
-    usersStore.profile = null;
-    await fireEvent.error(img);
-    expect(img.src).toContain("name=U");
-  });
-
-  it("does not logout if confirmation is cancelled", async () => {
-    vi.mocked(showConfirmDialog).mockResolvedValueOnce(false);
-    const { getByText } = renderWithProviders(NavbarComponent);
-    const logoutBtn = getByText("Keluar");
-    await fireEvent.click(logoutBtn);
+  it("should render identity of the active profile", async () => {
+    const { wrapper, pinia } = await setup();
+    useUsersStore(pinia).profile = { id: 1, name: "Delcom", email: "a@b.c" };
     await flushPromises();
 
-    expect(showConfirmDialog).toHaveBeenCalled();
-    expect(mockPush).not.toHaveBeenCalled();
+    const identity = wrapper.find('[data-testid="navbar-identity"]').text();
+    expect(identity).toContain("Delcom");
+    expect(identity).toContain("a@b.c");
   });
 
-  it("logs out and redirects to login when confirmed", async () => {
-    vi.mocked(showConfirmDialog).mockResolvedValueOnce(true);
-    const { getByText } = renderWithProviders(NavbarComponent);
-    const authStore = useAuthStore();
-    const logoutSpy = vi.spyOn(authStore, "logout").mockResolvedValueOnce(undefined);
+  it("should render empty identity when profile has not been loaded", async () => {
+    const { wrapper } = await setup();
+    expect(wrapper.find('[data-testid="navbar-identity"]').text()).toBe("");
+  });
 
-    const logoutBtn = getByText("Keluar");
-    await fireEvent.click(logoutBtn);
+  it("should emit toggle-sidebar", async () => {
+    const { wrapper } = await setup();
+    await wrapper.find('[data-testid="navbar-toggle"]').trigger("click");
+    expect(wrapper.emitted("toggle-sidebar")).toHaveLength(1);
+  });
+
+  it("should not logout when confirmation is cancelled", async () => {
+    (showConfirmDialog as any).mockResolvedValue(false);
+    const { wrapper, pinia, router } = await setup();
+
+    await wrapper.find('[data-testid="navbar-logout"]').trigger("click");
     await flushPromises();
 
-    expect(showConfirmDialog).toHaveBeenCalled();
-    expect(logoutSpy).toHaveBeenCalled();
-    expect(showSuccessDialog).toHaveBeenCalledWith("Berhasil keluar!");
-    expect(mockPush).toHaveBeenCalledWith("/auth/login");
+    expect(useAuthStore(pinia).asyncSetIsAuthLogout).not.toHaveBeenCalled();
+    expect(router.currentRoute.value.fullPath).toBe("/");
+  });
+
+  it("should logout and go to login page when confirmed", async () => {
+    (showConfirmDialog as any).mockResolvedValue(true);
+    const { wrapper, pinia, router } = await setup();
+
+    await wrapper.find('[data-testid="navbar-logout"]').trigger("click");
+    await flushPromises();
+
+    expect(useAuthStore(pinia).asyncSetIsAuthLogout).toHaveBeenCalledTimes(1);
+    expect(router.currentRoute.value.fullPath).toBe("/auth/login");
+  });
+
+  it("should disable logout button while logging out", async () => {
+    const { wrapper, pinia } = await setup();
+    useAuthStore(pinia).isAuthLogout = true;
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="navbar-logout"]').attributes("disabled")).toBeDefined();
   });
 });

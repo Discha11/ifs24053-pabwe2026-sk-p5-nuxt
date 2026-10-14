@@ -1,110 +1,101 @@
-// src/features/users/states/usersStore.ts
 import { defineStore } from "pinia";
-import type { User } from "../api/userApi";
+import { showErrorDialog, showSuccessDialog } from "../../../helpers/toolsHelper";
 import {
-  getAllUsersApi,
-  getProfileApi,
-  updateProfileApi,
-  uploadPhotoApi,
-  changePasswordApi,
+  getMe,
+  getUsers,
+  postPhoto,
+  putMe,
+  putPassword,
+  type PasswordPayload,
+  type ProfilePayload,
+  type User,
 } from "../api/userApi";
 
 export interface UsersState {
   users: User[];
   profile: User | null;
-  isLoading: boolean;
-  error: string | null;
+  isUsers: boolean;
+  isProfile: boolean;
+  isProfileChange: boolean;
+  isPhotoChange: boolean;
+  isPasswordChange: boolean;
 }
 
 export const useUsersStore = defineStore("users", {
   state: (): UsersState => ({
     users: [],
     profile: null,
-    isLoading: false,
-    error: null,
+    isUsers: false,
+    isProfile: false,
+    isProfileChange: false,
+    isPhotoChange: false,
+    isPasswordChange: false,
   }),
-
-  getters: {
-    currentProfile: (state) => state.profile,
-    allUsers: (state) => state.users,
-  },
-
   actions: {
-    async fetchUsers(): Promise<void> {
-      this.isLoading = true;
-      this.error = null;
-      try {
-        const data = await getAllUsersApi();
-        this.users = data.users;
-      } catch (err) {
-        this.error =
-          err instanceof Error ? err.message : "Gagal mengambil data pengguna";
-        throw err;
-      } finally {
-        this.isLoading = false;
+    async asyncGetUsers(): Promise<boolean> {
+      this.isUsers = true;
+      const result = await getUsers();
+      this.isUsers = false;
+
+      if (result.status !== "success") {
+        await showErrorDialog(result.message);
+        return false;
       }
+      this.users = result.data.users;
+      return true;
     },
 
-    async fetchProfile(): Promise<void> {
-      this.isLoading = true;
-      this.error = null;
-      try {
-        const data = await getProfileApi();
-        this.profile = data.user;
-      } catch (err) {
-        this.error =
-          err instanceof Error ? err.message : "Gagal mengambil profil";
-        throw err;
-      } finally {
-        this.isLoading = false;
+    async asyncGetProfile(): Promise<boolean> {
+      this.isProfile = true;
+      const result = await getMe();
+      this.isProfile = false;
+
+      if (result.status !== "success") {
+        await showErrorDialog(result.message);
+        return false;
       }
+      this.profile = result.data.user;
+      return true;
     },
 
-    async updateProfile(name: string, email: string): Promise<void> {
-      this.isLoading = true;
-      this.error = null;
-      try {
-        const data = await updateProfileApi(name, email);
-        this.profile = data.user;
-      } catch (err) {
-        this.error =
-          err instanceof Error ? err.message : "Gagal memperbarui profil";
-        throw err;
-      } finally {
-        this.isLoading = false;
+    async asyncChangeProfile(payload: ProfilePayload): Promise<boolean> {
+      this.isProfileChange = true;
+      const result = await putMe(payload);
+      this.isProfileChange = false;
+
+      if (result.status !== "success") {
+        await showErrorDialog(result.message);
+        return false;
       }
+      this.profile = result.data.user;
+      await showSuccessDialog(result.message);
+      return true;
     },
 
-    async uploadPhoto(photo: File): Promise<void> {
-      this.isLoading = true;
-      this.error = null;
-      try {
-        await uploadPhotoApi(photo);
-        await this.fetchProfile();
-      } catch (err) {
-        this.error = err instanceof Error ? err.message : "Gagal upload foto";
-        throw err;
-      } finally {
-        this.isLoading = false;
+    async asyncChangePhoto(file: File): Promise<boolean> {
+      this.isPhotoChange = true;
+      const result = await postPhoto(file);
+      this.isPhotoChange = false;
+
+      if (result.status !== "success") {
+        await showErrorDialog(result.message);
+        return false;
       }
+      await showSuccessDialog(result.message);
+      return true;
     },
 
-    async changePassword(
-      password: string,
-      new_password: string,
-      new_password_confirmation: string
-    ): Promise<void> {
-      this.isLoading = true;
-      this.error = null;
-      try {
-        await changePasswordApi(password, new_password, new_password_confirmation);
-      } catch (err) {
-        this.error =
-          err instanceof Error ? err.message : "Gagal mengubah password";
-        throw err;
-      } finally {
-        this.isLoading = false;
+    async asyncChangePassword(payload: PasswordPayload): Promise<boolean> {
+      this.isPasswordChange = true;
+      const result = await putPassword(payload);
+      this.isPasswordChange = false;
+
+      if (result.status !== "success") {
+        await showErrorDialog(result.message);
+        return false;
       }
+      await showSuccessDialog(result.message);
+      return true;
     },
   },
 });

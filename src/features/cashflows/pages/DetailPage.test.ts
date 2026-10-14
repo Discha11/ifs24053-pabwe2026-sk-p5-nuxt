@@ -1,178 +1,153 @@
-// src/features/cashflows/pages/DetailPage.test.ts
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { fireEvent } from "@testing-library/vue";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises } from "@vue/test-utils";
+import { h } from "vue";
+import { showConfirmDialog } from "../../../helpers/toolsHelper";
 import { renderWithProviders } from "../../../test-utils";
-import DetailPage from "./DetailPage.vue";
+import type { CashFlow } from "../api/cashFlowApi";
+import ChangeModal from "../modals/ChangeModal.vue";
 import { useCashFlowsStore } from "../states/cashFlowsStore";
-import { showConfirmDialog, showSuccessDialog, showErrorDialog } from "../../../helpers/toolsHelper";
+import DetailPage from "./DetailPage.vue";
 
-const mockPush = vi.fn();
-vi.mock("vue-router", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("vue-router")>();
-  return {
-    ...actual,
-    useRouter: () => ({ push: mockPush }),
-    useRoute: () => ({ params: { cashFlowId: "1" }, path: "/cash-flows/1" }),
-    RouterLink: { template: "<a><slot /></a>" },
-  };
+vi.mock("../../../helpers/toolsHelper", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../helpers/toolsHelper")>();
+  return { ...actual, showConfirmDialog: vi.fn(), showErrorDialog: vi.fn(), showSuccessDialog: vi.fn() };
 });
 
-vi.mock("../../../helpers/toolsHelper", () => ({
-  showConfirmDialog: vi.fn(),
-  showSuccessDialog: vi.fn().mockResolvedValue(undefined),
-  showErrorDialog: vi.fn().mockResolvedValue(undefined),
-  formatRupiah: (n: number) => `Rp${n}`,
-  formatDateTime: (d: string) => d,
-}));
-
-Object.defineProperty(globalThis, "DELCOM_BASEURL", {
-  value: "https://open-api.delcom.org/api/v1",
-  writable: true,
-});
-
-const mockCashFlow = {
-  id: 1,
+const inflow: CashFlow = {
+  id: 5,
   user_id: 1,
   type: "inflow",
   source: "cash",
   label: "gaji",
   description: "Gaji bulanan",
-  nominal: 5000000,
-  created_at: "2024-10-05T00:00:00Z",
-  updated_at: "2024-10-05T00:00:00Z",
+  nominal: 2500000,
+  created_at: "2024-10-05T11:26:45.000000Z",
+  updated_at: "2024-10-05T11:26:48.000000Z",
 };
+const outflow: CashFlow = { ...inflow, type: "outflow", source: "savings", label: "elektronik" };
+
+const Stub = { render: () => h("div") };
+const routes = [
+  { path: "/cash-flows/:cashFlowId", component: Stub },
+  { path: "/:pathMatch(.*)*", component: Stub },
+];
+
+interface Options {
+  data?: CashFlow;
+  loadResult?: boolean;
+  deleteResult?: boolean;
+}
+
+function setup(options: Options = {}) {
+  return renderWithProviders(DetailPage, {
+    route: "/cash-flows/5",
+    routes,
+    beforeMount: (pinia) => {
+      const store = useCashFlowsStore(pinia);
+      vi.spyOn(store, "asyncGetCashFlow").mockImplementation(async () => {
+        if (options.data) {
+          store.cashFlow = options.data;
+        }
+        return options.loadResult ?? true;
+      });
+      vi.spyOn(store, "asyncDeleteCashFlow").mockResolvedValue(options.deleteResult ?? true);
+    },
+  });
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe("DetailPage", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
-    mockPush.mockClear();
-    vi.clearAllMocks();
-    localStorage.setItem("accessToken", "token");
-    vi.mocked(fetch).mockResolvedValue({
-      json: async () => ({
-        status: "success",
-        data: {
-          cash_flow: mockCashFlow,
-          labels: ["gaji"],
-        },
-      }),
-    } as Response);
-  });
-  afterEach(() => vi.unstubAllGlobals());
-
-  it("renders page title and back link", () => {
-    const { getByText } = renderWithProviders(DetailPage);
-    expect(getByText("Detail Transaksi")).toBeTruthy();
-    expect(getByText("Kembali")).toBeTruthy();
+  it("should load the transaction by route param", async () => {
+    const { pinia } = await setup({ data: inflow });
+    expect(useCashFlowsStore(pinia).asyncGetCashFlow).toHaveBeenCalledWith("5");
   });
 
-  it("renders transaction details and opens modal on edit click", async () => {
-    const { findByText, getByRole } = renderWithProviders(DetailPage);
-    expect(await findByText("Gaji bulanan")).toBeTruthy();
-    expect(await findByText("Pemasukan")).toBeTruthy();
-
-    const editBtn = getByRole("button", { name: /ubah/i });
-    await fireEvent.click(editBtn);
-    expect(await findByText("Ubah Arus Kas")).toBeTruthy();
+  it("should show loading while the transaction is not available", async () => {
+    const { wrapper } = await setup();
+    expect(wrapper.find('[data-testid="detail-loading"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="detail-card"]').exists()).toBe(false);
   });
 
-  it("handles delete cancelled", async () => {
-    vi.mocked(showConfirmDialog).mockResolvedValueOnce(false);
-    const { findByRole } = renderWithProviders(DetailPage);
-    const deleteBtn = await findByRole("button", { name: /hapus/i });
-    await fireEvent.click(deleteBtn);
+  it("should redirect home when loading fails", async () => {
+    const { router } = await setup({ loadResult: false });
+    await flushPromises();
+    expect(router.currentRoute.value.fullPath).toBe("/");
+  });
+
+  it("should render inflow details", async () => {
+    const { wrapper } = await setup({ data: inflow });
+
+    expect(wrapper.find('[data-testid="detail-badge"]').text()).toBe("Pemasukan");
+    expect(wrapper.find('[data-testid="detail-badge"]').classes()).toContain("text-emerald-700");
+    expect(wrapper.find('[data-testid="detail-nominal"]').text()).toContain("2.500.000");
+    expect(wrapper.find('[data-testid="detail-label"]').text()).toBe("gaji");
+    expect(wrapper.find('[data-testid="detail-source"]').text()).toBe("Tunai");
+    expect(wrapper.find('[data-testid="detail-description"]').text()).toBe("Gaji bulanan");
+  });
+
+  it("should render outflow details", async () => {
+    const { wrapper } = await setup({ data: outflow });
+
+    expect(wrapper.find('[data-testid="detail-badge"]').text()).toBe("Pengeluaran");
+    expect(wrapper.find('[data-testid="detail-badge"]').classes()).toContain("text-rose-700");
+    expect(wrapper.find('[data-testid="detail-source"]').text()).toBe("Tabungan");
+  });
+
+  it("should open and close the change modal", async () => {
+    const { wrapper } = await setup({ data: inflow });
+    expect(wrapper.findComponent(ChangeModal).exists()).toBe(false);
+
+    await wrapper.find('[data-testid="btn-edit"]').trigger("click");
+    expect(wrapper.findComponent(ChangeModal).props("cashFlow")).toEqual(inflow);
+
+    wrapper.findComponent(ChangeModal).vm.$emit("close");
+    await flushPromises();
+    expect(wrapper.findComponent(ChangeModal).exists()).toBe(false);
+  });
+
+  it("should reload the transaction after the change modal saved", async () => {
+    const { wrapper, pinia } = await setup({ data: inflow });
+    await wrapper.find('[data-testid="btn-edit"]').trigger("click");
+
+    wrapper.findComponent(ChangeModal).vm.$emit("saved");
     await flushPromises();
 
-    expect(showConfirmDialog).toHaveBeenCalled();
-    expect(mockPush).not.toHaveBeenCalled();
+    expect(wrapper.findComponent(ChangeModal).exists()).toBe(false);
+    expect(useCashFlowsStore(pinia).asyncGetCashFlow).toHaveBeenCalledTimes(2);
   });
 
-  it("handles successful delete", async () => {
-    vi.mocked(showConfirmDialog).mockResolvedValueOnce(true);
-    const { findByRole } = renderWithProviders(DetailPage);
-    const store = useCashFlowsStore();
-    const deleteSpy = vi.spyOn(store, "deleteCashFlow").mockResolvedValueOnce(undefined as never);
+  it("should not delete when confirmation is cancelled", async () => {
+    (showConfirmDialog as any).mockResolvedValue(false);
+    const { wrapper, pinia, router } = await setup({ data: inflow });
 
-    const deleteBtn = await findByRole("button", { name: /hapus/i });
-    await fireEvent.click(deleteBtn);
+    await wrapper.find('[data-testid="btn-delete"]').trigger("click");
     await flushPromises();
 
-    expect(deleteSpy).toHaveBeenCalledWith(1);
-    expect(showSuccessDialog).toHaveBeenCalledWith("Transaksi berhasil dihapus!");
-    expect(mockPush).toHaveBeenCalledWith("/");
+    expect(useCashFlowsStore(pinia).asyncDeleteCashFlow).not.toHaveBeenCalled();
+    expect(router.currentRoute.value.fullPath).toBe("/cash-flows/5");
   });
 
-  it("handles delete failure with Error instance", async () => {
-    vi.mocked(showConfirmDialog).mockResolvedValueOnce(true);
-    const { findByRole } = renderWithProviders(DetailPage);
-    const store = useCashFlowsStore();
-    vi.spyOn(store, "deleteCashFlow").mockRejectedValueOnce(new Error("Hapus gagal"));
+  it("should delete and go back home when confirmed", async () => {
+    (showConfirmDialog as any).mockResolvedValue(true);
+    const { wrapper, pinia, router } = await setup({ data: inflow });
 
-    const deleteBtn = await findByRole("button", { name: /hapus/i });
-    await fireEvent.click(deleteBtn);
+    await wrapper.find('[data-testid="btn-delete"]').trigger("click");
     await flushPromises();
 
-    expect(showErrorDialog).toHaveBeenCalledWith("Hapus gagal");
+    expect(useCashFlowsStore(pinia).asyncDeleteCashFlow).toHaveBeenCalledWith("5");
+    expect(router.currentRoute.value.fullPath).toBe("/");
   });
 
-  it("handles delete failure with non-Error", async () => {
-    vi.mocked(showConfirmDialog).mockResolvedValueOnce(true);
-    const { findByRole } = renderWithProviders(DetailPage);
-    const store = useCashFlowsStore();
-    vi.spyOn(store, "deleteCashFlow").mockRejectedValueOnce("Error str");
+  it("should stay on the page when delete fails", async () => {
+    (showConfirmDialog as any).mockResolvedValue(true);
+    const { wrapper, router } = await setup({ data: inflow, deleteResult: false });
 
-    const deleteBtn = await findByRole("button", { name: /hapus/i });
-    await fireEvent.click(deleteBtn);
+    await wrapper.find('[data-testid="btn-delete"]').trigger("click");
     await flushPromises();
 
-    expect(showErrorDialog).toHaveBeenCalledWith("Gagal menghapus");
-  });
-
-  it("renders outflow type and fallback source label", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      json: async () => ({
-        status: "success",
-        data: {
-          cash_flow: {
-            ...mockCashFlow,
-            type: "outflow",
-            source: "other_unknown",
-          },
-          labels: [],
-        },
-      }),
-    } as Response);
-    const { findByText } = renderWithProviders(DetailPage);
-    expect(await findByText("Pengeluaran")).toBeTruthy();
-    expect(await findByText("other_unknown")).toBeTruthy();
-  });
-
-  it("does nothing on delete if store.cashFlow is null", async () => {
-    const { findByRole } = renderWithProviders(DetailPage);
-    const store = useCashFlowsStore();
-    const deleteBtn = await findByRole("button", { name: /hapus/i });
-    store.cashFlow = null;
-    await fireEvent.click(deleteBtn);
-    expect(showConfirmDialog).not.toHaveBeenCalled();
-  });
-
-  it("refreshes detail when ChangeModal emits success", async () => {
-    const { getByRole } = renderWithProviders(DetailPage);
-    await flushPromises();
-    const store = useCashFlowsStore();
-    const fetchSpy = vi.spyOn(store, "fetchCashFlowDetail");
-
-    const editBtn = getByRole("button", { name: /ubah/i });
-    await fireEvent.click(editBtn);
-    await flushPromises();
-
-    const changeForm = document.body.querySelector("#change-cashflow-form") as HTMLFormElement;
-    if (changeForm) {
-      vi.spyOn(store, "updateCashFlow").mockResolvedValueOnce(undefined as never);
-      await fireEvent.submit(changeForm);
-      await flushPromises();
-      expect(fetchSpy).toHaveBeenCalledWith(1);
-    }
+    expect(router.currentRoute.value.fullPath).toBe("/cash-flows/5");
   });
 });

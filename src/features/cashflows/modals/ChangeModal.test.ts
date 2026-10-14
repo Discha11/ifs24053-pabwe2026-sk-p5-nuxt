@@ -1,169 +1,107 @@
-// src/features/cashflows/modals/ChangeModal.test.ts
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent } from "@testing-library/vue";
+import { describe, expect, it, vi } from "vitest";
 import { flushPromises } from "@vue/test-utils";
 import { renderWithProviders } from "../../../test-utils";
-import ChangeModal from "./ChangeModal.vue";
 import type { CashFlow } from "../api/cashFlowApi";
 import { useCashFlowsStore } from "../states/cashFlowsStore";
-import { showSuccessDialog, showErrorDialog } from "../../../helpers/toolsHelper";
+import ChangeModal from "./ChangeModal.vue";
 
-vi.mock("../../../helpers/toolsHelper", () => ({
-  showSuccessDialog: vi.fn().mockResolvedValue(undefined),
-  showErrorDialog: vi.fn().mockResolvedValue(undefined),
-}));
-
-Object.defineProperty(globalThis, "DELCOM_BASEURL", {
-  value: "https://open-api.delcom.org/api/v1",
-  writable: true,
-});
-
-const mockCashFlow: CashFlow = {
-  id: 1,
+const cashFlow: CashFlow = {
+  id: 7,
   user_id: 1,
   type: "inflow",
   source: "cash",
   label: "gaji",
   description: "Gaji bulanan",
-  nominal: 5000000,
-  created_at: "2024-10-05T00:00:00Z",
-  updated_at: "2024-10-05T00:00:00Z",
+  nominal: 2500000,
+  created_at: "2024-10-05T11:26:45.000000Z",
+  updated_at: "2024-10-05T11:26:48.000000Z",
 };
 
+function setup(changeResult = true) {
+  return renderWithProviders(ChangeModal, {
+    props: { cashFlow },
+    beforeMount: (pinia) => {
+      const store = useCashFlowsStore(pinia);
+      store.labels = ["gaji"];
+      vi.spyOn(store, "asyncChangeCashFlow").mockResolvedValue(changeResult);
+    },
+  });
+}
+
 describe("ChangeModal", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  it("should prefill the form from the cash flow", async () => {
+    const { wrapper } = await setup();
+    expect(wrapper.text()).toContain("Ubah Transaksi");
+    expect((wrapper.find("#change-type").element as HTMLSelectElement).value).toBe("inflow");
+    expect((wrapper.find("#change-source").element as HTMLSelectElement).value).toBe("cash");
+    expect((wrapper.find("#change-label").element as HTMLInputElement).value).toBe("gaji");
+    expect((wrapper.find("#change-nominal").element as HTMLInputElement).value).toBe("2500000");
+    expect((wrapper.find("#change-description").element as HTMLTextAreaElement).value).toBe("Gaji bulanan");
+    expect(wrapper.findAll("#change-label-options option")).toHaveLength(1);
   });
 
-  it("does not render when isOpen=false", () => {
-    const { queryByText } = renderWithProviders(ChangeModal, {
-      props: { isOpen: false, cashFlow: mockCashFlow, labels: [] },
-    });
-    expect(queryByText("Ubah Arus Kas")).toBeNull();
+  it("should require a label", async () => {
+    const { wrapper, pinia } = await setup();
+    await wrapper.find("#change-label").setValue("   ");
+    await wrapper.find("form").trigger("submit");
+
+    expect(wrapper.find('[data-testid="change-error"]').text()).toContain("Label wajib diisi");
+    expect(useCashFlowsStore(pinia).asyncChangeCashFlow).not.toHaveBeenCalled();
   });
 
-  it("renders form when isOpen=true", () => {
-    const { getByText } = renderWithProviders(ChangeModal, {
-      props: { isOpen: true, cashFlow: mockCashFlow, labels: [] },
-    });
-    expect(getByText("Ubah Arus Kas")).toBeTruthy();
+  it("should require a nominal greater than zero", async () => {
+    const { wrapper, pinia } = await setup();
+    await wrapper.find("#change-nominal").setValue(0);
+    await wrapper.find("form").trigger("submit");
+
+    expect(wrapper.find('[data-testid="change-error"]').text()).toContain("Nominal harus lebih dari 0");
+    expect(useCashFlowsStore(pinia).asyncChangeCashFlow).not.toHaveBeenCalled();
   });
 
-  it("pre-fills label from cashFlow prop", () => {
-    const { getByDisplayValue } = renderWithProviders(ChangeModal, {
-      props: { isOpen: true, cashFlow: mockCashFlow, labels: [] },
-    });
-    expect(getByDisplayValue("gaji")).toBeTruthy();
-  });
-
-  it("renders save and cancel buttons and emits close when clicking Batal", async () => {
-    const { getByText, emitted } = renderWithProviders(ChangeModal, {
-      props: { isOpen: true, cashFlow: mockCashFlow, labels: [] },
-    });
-    expect(getByText("Simpan Perubahan")).toBeTruthy();
-    const cancelBtn = getByText("Batal");
-    await fireEvent.click(cancelBtn);
-    expect(emitted().close).toBeTruthy();
-  });
-
-  it("emits close when clicking close button and overlay", async () => {
-    const { getByLabelText, emitted } = renderWithProviders(ChangeModal, {
-      props: { isOpen: true, cashFlow: mockCashFlow, labels: [] },
-    });
-    const closeBtn = getByLabelText("Tutup");
-    await fireEvent.click(closeBtn);
-    expect(emitted().close).toBeTruthy();
-
-    const overlay = document.body.querySelector(".modal-overlay") as HTMLElement;
-    await fireEvent.click(overlay);
-    expect(emitted().close).toHaveLength(2);
-  });
-
-  it("handles changing radio, select, and text input options", async () => {
-    const { getByText } = renderWithProviders(ChangeModal, {
-      props: { isOpen: true, cashFlow: mockCashFlow, labels: [] },
-    });
-    const radioInflow = document.body.querySelector('input[type="radio"][value="inflow"]') as HTMLInputElement;
-    const radioOutflow = document.body.querySelector('input[type="radio"][value="outflow"]') as HTMLInputElement;
-    await fireEvent.click(radioOutflow);
-    await fireEvent.change(radioOutflow);
-    await fireEvent.click(radioInflow);
-    await fireEvent.change(radioInflow);
-
-    const sourceSelect = document.body.querySelector("#change-source") as HTMLSelectElement;
-    await fireEvent.update(sourceSelect, "cash");
-    await fireEvent.update(sourceSelect, "savings");
-    await fireEvent.update(sourceSelect, "loans");
-
-    const labelInput = document.body.querySelector("#change-label") as HTMLInputElement;
-    await fireEvent.update(labelInput, "updated-label");
-
-    const nominalInput = document.body.querySelector("#change-nominal") as HTMLInputElement;
-    await fireEvent.update(nominalInput, "99999");
-
-    const descInput = document.body.querySelector("#change-description") as HTMLTextAreaElement;
-    await fireEvent.update(descInput, "updated description");
-  });
-
-  it("handles successful submit", async () => {
-    const { getByText, emitted } = renderWithProviders(ChangeModal, {
-      props: { isOpen: true, cashFlow: mockCashFlow, labels: [] },
-    });
-    const store = useCashFlowsStore();
-    vi.spyOn(store, "updateCashFlow").mockResolvedValueOnce(undefined as never);
-
-    await fireEvent.click(getByText("Simpan Perubahan"));
-
-    expect(store.updateCashFlow).toHaveBeenCalledWith(1, expect.any(Object));
-    expect(showSuccessDialog).toHaveBeenCalledWith("Arus kas berhasil diperbarui!");
-    expect(emitted().success).toBeTruthy();
-    expect(emitted().close).toBeTruthy();
-  });
-
-  it("handles submit error with Error instance", async () => {
-    const { getByText } = renderWithProviders(ChangeModal, {
-      props: { isOpen: true, cashFlow: mockCashFlow, labels: [] },
-    });
-    const store = useCashFlowsStore();
-    vi.spyOn(store, "updateCashFlow").mockRejectedValueOnce(new Error("Gagal update"));
-
-    await fireEvent.click(getByText("Simpan Perubahan"));
-    expect(showErrorDialog).toHaveBeenCalledWith("Gagal update");
-  });
-
-  it("handles submit error with non-Error object", async () => {
-    const { getByText } = renderWithProviders(ChangeModal, {
-      props: { isOpen: true, cashFlow: mockCashFlow, labels: [] },
-    });
-    const store = useCashFlowsStore();
-    vi.spyOn(store, "updateCashFlow").mockRejectedValueOnce("Error str");
-
-    await fireEvent.click(getByText("Simpan Perubahan"));
-    expect(showErrorDialog).toHaveBeenCalledWith("Gagal memperbarui arus kas");
-  });
-
-  it("does nothing on submit if cashFlow prop is null", async () => {
-    renderWithProviders(ChangeModal, {
-      props: { isOpen: true, cashFlow: null, labels: [] },
-    });
-    const store = useCashFlowsStore();
-    const spy = vi.spyOn(store, "updateCashFlow");
-
-    const form = document.body.querySelector("#change-cashflow-form") as HTMLFormElement;
-    if (form) {
-      await fireEvent.submit(form);
-    }
-    expect(spy).not.toHaveBeenCalled();
-  });
-
-  it("shows loading spinner when store.isCashFlowChange is true", async () => {
-    renderWithProviders(ChangeModal, {
-      props: { isOpen: true, cashFlow: mockCashFlow, labels: [] },
-    });
-    const store = useCashFlowsStore();
-    store.isCashFlowChange = true;
+  it("should submit changes and emit saved on success", async () => {
+    const { wrapper, pinia } = await setup(true);
+    await wrapper.find("#change-type").setValue("outflow");
+    await wrapper.find("#change-source").setValue("loans");
+    await wrapper.find("#change-label").setValue("cicilan");
+    await wrapper.find("#change-nominal").setValue(500000);
+    await wrapper.find("#change-description").setValue("Cicilan");
+    await wrapper.find("form").trigger("submit");
     await flushPromises();
-    expect(document.body.querySelector(".spinner")).toBeTruthy();
-    expect(document.body.textContent).toContain("Menyimpan...");
+
+    expect(useCashFlowsStore(pinia).asyncChangeCashFlow).toHaveBeenCalledWith(7, {
+      type: "outflow",
+      source: "loans",
+      label: "cicilan",
+      nominal: 500000,
+      description: "Cicilan",
+    });
+    expect(wrapper.find('[data-testid="change-error"]').exists()).toBe(false);
+    expect(wrapper.emitted("saved")).toHaveLength(1);
+  });
+
+  it("should not emit saved when the request fails", async () => {
+    const { wrapper } = await setup(false);
+    await wrapper.find("form").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.emitted("saved")).toBeUndefined();
+  });
+
+  it("should emit close from close button, cancel button and backdrop", async () => {
+    const { wrapper } = await setup();
+    await wrapper.find('[data-testid="change-close"]').trigger("click");
+    await wrapper.find('[data-testid="change-cancel"]').trigger("click");
+    await wrapper.find('[data-testid="change-modal"]').trigger("click");
+    expect(wrapper.emitted("close")).toHaveLength(3);
+  });
+
+  it("should show saving state on the submit button", async () => {
+    const { wrapper, pinia } = await setup();
+    useCashFlowsStore(pinia).isCashFlowChange = true;
+    await flushPromises();
+
+    const button = wrapper.find('button[type="submit"]');
+    expect(button.text()).toBe("Menyimpan...");
+    expect(button.attributes("disabled")).toBeDefined();
   });
 });

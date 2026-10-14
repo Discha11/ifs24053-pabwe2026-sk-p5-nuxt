@@ -1,54 +1,38 @@
-// src/features/cashflows/components/SidebarComponent.test.ts
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { renderWithProviders } from "../../../test-utils";
 import SidebarComponent from "./SidebarComponent.vue";
 
-let mockPath = "/";
-vi.mock("vue-router", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("vue-router")>();
-  return {
-    ...actual,
-    useRoute: () => ({ path: mockPath }),
-  };
-});
-
 describe("SidebarComponent", () => {
-  beforeEach(() => {
-    mockPath = "/";
+  it("should render the three menu links", async () => {
+    const { wrapper } = await renderWithProviders(SidebarComponent, { props: { open: false } });
+
+    const links = wrapper.findAll("nav a");
+    expect(links.map((link) => link.attributes("href"))).toEqual(["/", "/users", "/profile"]);
+    expect(wrapper.text()).toContain("Ringkasan Arus Kas");
+    expect(wrapper.text()).toContain("Direktori Pengguna");
+    expect(wrapper.text()).toContain("Profil Saya");
   });
 
-  it("renders Ringkasan Arus Kas link", () => {
-    const { getByText } = renderWithProviders(SidebarComponent);
-    expect(getByText("Ringkasan Arus Kas")).toBeTruthy();
+  it("should not render backdrop when closed", async () => {
+    const { wrapper } = await renderWithProviders(SidebarComponent, { props: { open: false } });
+    expect(wrapper.find('[data-testid="sidebar-backdrop"]').exists()).toBe(false);
   });
 
-  it("renders Direktori Pengguna link", () => {
-    const { getByText } = renderWithProviders(SidebarComponent);
-    expect(getByText("Direktori Pengguna")).toBeTruthy();
+  it("should emit close when backdrop is clicked", async () => {
+    const { wrapper } = await renderWithProviders(SidebarComponent, { props: { open: true } });
+    await wrapper.find('[data-testid="sidebar-backdrop"]').trigger("click");
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 
-  it("renders Profil Saya link", () => {
-    const { getByText } = renderWithProviders(SidebarComponent);
-    expect(getByText("Profil Saya")).toBeTruthy();
+  it("should emit close when close button is clicked", async () => {
+    const { wrapper } = await renderWithProviders(SidebarComponent, { props: { open: true } });
+    await wrapper.find('[data-testid="sidebar-close"]').trigger("click");
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 
-  it("nav-home has active class on / route", () => {
-    const { getByText } = renderWithProviders(SidebarComponent);
-    const link = getByText("Ringkasan Arus Kas").closest("a");
-    expect(link?.classList.contains("active")).toBe(true);
-  });
-
-  it("nav-home has active class on /cash-flows/* subroute", () => {
-    mockPath = "/cash-flows/123";
-    const { getByText } = renderWithProviders(SidebarComponent);
-    const link = getByText("Ringkasan Arus Kas").closest("a");
-    expect(link?.classList.contains("active")).toBe(true);
-  });
-
-  it("nav-users has active class on /users route", () => {
-    mockPath = "/users";
-    const { getByText } = renderWithProviders(SidebarComponent);
-    const link = getByText("Direktori Pengguna").closest("a");
-    expect(link?.classList.contains("active")).toBe(true);
+  it("should emit close when a menu link is clicked", async () => {
+    const { wrapper } = await renderWithProviders(SidebarComponent, { props: { open: true } });
+    await wrapper.findAll("nav a")[1].trigger("click");
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 });

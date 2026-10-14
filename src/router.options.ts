@@ -1,8 +1,7 @@
-// src/router.options.ts
+import type { RouterConfig } from "@nuxt/schema";
 import routes from "./routes";
 
-const routerOptions = {
-  routes: (_routes: unknown) => routes,
+// Router options kustom Nuxt: seluruh rute berasal dari src/routes.ts
+export default <RouterConfig>{
+  routes: () => routes,
 };
-
-export default routerOptions;

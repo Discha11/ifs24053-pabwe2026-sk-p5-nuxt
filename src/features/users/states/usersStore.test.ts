@@ -1,147 +1,107 @@
-// src/features/users/states/usersStore.test.ts
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { setActivePinia, createPinia } from "pinia";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createPinia, setActivePinia } from "pinia";
+import { showErrorDialog, showSuccessDialog } from "../../../helpers/toolsHelper";
+import { getMe, getUsers, postPhoto, putMe, putPassword } from "../api/userApi";
 import { useUsersStore } from "./usersStore";
 
-Object.defineProperty(globalThis, "DELCOM_BASEURL", {
-  value: "https://open-api.delcom.org/api/v1",
-  writable: true,
+vi.mock("../api/userApi", () => ({
+  getUsers: vi.fn(),
+  getMe: vi.fn(),
+  putMe: vi.fn(),
+  postPhoto: vi.fn(),
+  putPassword: vi.fn(),
+}));
+vi.mock("../../../helpers/toolsHelper", () => ({
+  showErrorDialog: vi.fn(),
+  showSuccessDialog: vi.fn(),
+}));
+
+const user = { id: 1, name: "Delcom", email: "a@b.c" };
+const ok = { status: "success", message: "Berhasil" };
+const fail = { status: "fail", message: "Gagal" };
+
+beforeEach(() => {
+  setActivePinia(createPinia());
+  vi.clearAllMocks();
 });
 
-describe("useUsersStore", () => {
-  beforeEach(() => {
-    setActivePinia(createPinia());
-    vi.stubGlobal("fetch", vi.fn());
-    localStorage.setItem("accessToken", "token");
-  });
-  afterEach(() => vi.unstubAllGlobals());
-
-  const mockSuccess = (data: unknown) => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      json: async () => ({ status: "success", data }),
-    } as Response);
-  };
-
-  it("has correct initial state", () => {
+describe("usersStore", () => {
+  it("asyncGetUsers should store users on success", async () => {
+    (getUsers as any).mockResolvedValue({ ...ok, data: { users: [user] } });
     const store = useUsersStore();
-    expect(store.users).toEqual([]);
+    await expect(store.asyncGetUsers()).resolves.toBe(true);
+    expect(store.users).toEqual([user]);
+    expect(store.isUsers).toBe(false);
+  });
+
+  it("asyncGetUsers should show error on failure", async () => {
+    (getUsers as any).mockResolvedValue(fail);
+    const store = useUsersStore();
+    await expect(store.asyncGetUsers()).resolves.toBe(false);
+    expect(showErrorDialog).toHaveBeenCalledWith("Gagal");
+  });
+
+  it("asyncGetProfile should store profile on success", async () => {
+    (getMe as any).mockResolvedValue({ ...ok, data: { user } });
+    const store = useUsersStore();
+    await expect(store.asyncGetProfile()).resolves.toBe(true);
+    expect(store.profile).toEqual(user);
+    expect(store.isProfile).toBe(false);
+  });
+
+  it("asyncGetProfile should show error on failure", async () => {
+    (getMe as any).mockResolvedValue(fail);
+    const store = useUsersStore();
+    await expect(store.asyncGetProfile()).resolves.toBe(false);
+    expect(showErrorDialog).toHaveBeenCalledWith("Gagal");
     expect(store.profile).toBeNull();
   });
 
-  it("fetchUsers populates users", async () => {
-    mockSuccess({ users: [{ id: 1, name: "Test" }] });
+  it("asyncChangeProfile should update profile and show success", async () => {
+    (putMe as any).mockResolvedValue({ ...ok, data: { user: { ...user, name: "Baru" } } });
     const store = useUsersStore();
-    await store.fetchUsers();
-    expect(store.users).toHaveLength(1);
+    await expect(store.asyncChangeProfile({ name: "Baru", email: "a@b.c" })).resolves.toBe(true);
+    expect(store.profile.name).toBe("Baru");
+    expect(showSuccessDialog).toHaveBeenCalledWith("Berhasil");
+    expect(store.isProfileChange).toBe(false);
   });
 
-  it("throws on fetchUsers failure with Error and non-Error", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      json: async () => ({ status: "fail", message: "Unauthorized" }),
-    } as Response);
+  it("asyncChangeProfile should show error on failure", async () => {
+    (putMe as any).mockResolvedValue(fail);
     const store = useUsersStore();
-    await expect(store.fetchUsers()).rejects.toThrow("Unauthorized");
-    expect(store.error).toBe("Unauthorized");
-
-    vi.mocked(fetch).mockRejectedValueOnce("Non error str");
-    await expect(store.fetchUsers()).rejects.toBe("Non error str");
-    expect(store.error).toBe("Gagal mengambil data pengguna");
+    await expect(store.asyncChangeProfile({ name: "Baru", email: "a@b.c" })).resolves.toBe(false);
+    expect(showErrorDialog).toHaveBeenCalledWith("Gagal");
   });
 
-  it("fetchProfile sets profile", async () => {
-    mockSuccess({ user: { id: 1, name: "Me", email: "me@me.com" } });
+  it("asyncChangePhoto should show success", async () => {
+    (postPhoto as any).mockResolvedValue(ok);
     const store = useUsersStore();
-    await store.fetchProfile();
-    expect(store.profile?.name).toBe("Me");
+    await expect(store.asyncChangePhoto(new File(["x"], "a.png"))).resolves.toBe(true);
+    expect(showSuccessDialog).toHaveBeenCalledWith("Berhasil");
+    expect(store.isPhotoChange).toBe(false);
   });
 
-  it("fetchProfile throws on failure and sets fallback on non-Error", async () => {
-    vi.mocked(fetch).mockRejectedValueOnce(new Error("Fail fetch profile"));
+  it("asyncChangePhoto should show error on failure", async () => {
+    (postPhoto as any).mockResolvedValue(fail);
     const store = useUsersStore();
-    await expect(store.fetchProfile()).rejects.toThrow("Fail fetch profile");
-    expect(store.error).toBe("Fail fetch profile");
-
-    vi.mocked(fetch).mockRejectedValueOnce("Fail str");
-    await expect(store.fetchProfile()).rejects.toBe("Fail str");
-    expect(store.error).toBe("Gagal mengambil profil");
+    await expect(store.asyncChangePhoto(new File(["x"], "a.png"))).resolves.toBe(false);
+    expect(showErrorDialog).toHaveBeenCalledWith("Gagal");
   });
 
-  it("updateProfile updates profile", async () => {
-    mockSuccess({ user: { id: 1, name: "Updated", email: "upd@me.com" } });
+  it("asyncChangePassword should show success", async () => {
+    (putPassword as any).mockResolvedValue(ok);
     const store = useUsersStore();
-    await store.updateProfile("Updated", "upd@me.com");
-    expect(store.profile?.name).toBe("Updated");
+    const payload = { password: "a", new_password: "b", new_password_confirmation: "b" };
+    await expect(store.asyncChangePassword(payload)).resolves.toBe(true);
+    expect(showSuccessDialog).toHaveBeenCalledWith("Berhasil");
+    expect(store.isPasswordChange).toBe(false);
   });
 
-  it("updateProfile throws on failure and sets fallback on non-Error", async () => {
-    vi.mocked(fetch).mockRejectedValueOnce(new Error("Update error"));
+  it("asyncChangePassword should show error on failure", async () => {
+    (putPassword as any).mockResolvedValue(fail);
     const store = useUsersStore();
-    await expect(store.updateProfile("Name", "email@test.com")).rejects.toThrow("Update error");
-    expect(store.error).toBe("Update error");
-
-    vi.mocked(fetch).mockRejectedValueOnce("Update str error");
-    await expect(store.updateProfile("Name", "email@test.com")).rejects.toBe("Update str error");
-    expect(store.error).toBe("Gagal memperbarui profil");
-  });
-
-  it("uploadPhoto successfully uploads and refreshes profile", async () => {
-    // uploadPhotoApi response
-    mockSuccess({});
-    // fetchProfile response
-    mockSuccess({ user: { id: 1, name: "Me", email: "me@me.com", photo: "new_photo.jpg" } });
-
-    const store = useUsersStore();
-    const mockFile = new File(["dummy"], "photo.jpg", { type: "image/jpeg" });
-    await store.uploadPhoto(mockFile);
-    expect(store.profile?.photo).toBe("new_photo.jpg");
-  });
-
-  it("uploadPhoto throws on failure and sets fallback on non-Error", async () => {
-    vi.mocked(fetch).mockRejectedValueOnce(new Error("Upload failed"));
-    const store = useUsersStore();
-    const mockFile = new File(["dummy"], "photo.jpg", { type: "image/jpeg" });
-    await expect(store.uploadPhoto(mockFile)).rejects.toThrow("Upload failed");
-    expect(store.error).toBe("Upload failed");
-
-    vi.mocked(fetch).mockRejectedValueOnce("Upload str fail");
-    await expect(store.uploadPhoto(mockFile)).rejects.toBe("Upload str fail");
-    expect(store.error).toBe("Gagal upload foto");
-  });
-
-  it("changePassword resolves on success", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      json: async () => ({ status: "success" }),
-    } as Response);
-    const store = useUsersStore();
-    await expect(
-      store.changePassword("old", "new123", "new123")
-    ).resolves.not.toThrow();
-  });
-
-  it("changePassword throws on failure and sets fallback on non-Error", async () => {
-    vi.mocked(fetch).mockRejectedValueOnce(new Error("Password mismatch"));
-    const store = useUsersStore();
-    await expect(
-      store.changePassword("old", "new123", "new123")
-    ).rejects.toThrow("Password mismatch");
-    expect(store.error).toBe("Password mismatch");
-
-    vi.mocked(fetch).mockRejectedValueOnce("Non error");
-    await expect(
-      store.changePassword("old", "new123", "new123")
-    ).rejects.toBe("Non error");
-    expect(store.error).toBe("Gagal mengubah password");
-  });
-
-  it("getters return correct values", () => {
-    const store = useUsersStore();
-    expect(store.currentProfile).toBeNull();
-    expect(store.allUsers).toEqual([]);
-
-    const user = { id: 1, name: "Me", email: "m@m.com", photo: "", created_at: "", updated_at: "" };
-    store.profile = user;
-    store.users = [user];
-    expect(store.currentProfile).toEqual(user);
-    expect(store.allUsers).toHaveLength(1);
+    const payload = { password: "a", new_password: "b", new_password_confirmation: "b" };
+    await expect(store.asyncChangePassword(payload)).resolves.toBe(false);
+    expect(showErrorDialog).toHaveBeenCalledWith("Gagal");
   });
 });
